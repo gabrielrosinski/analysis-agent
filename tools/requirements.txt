@@ -1,0 +1,17 @@
+# Python dependencies for Kagent DevOps RCA custom tools
+# Install with: pip install -r requirements.txt
+
+# For GitHub API tool
+requests==2.31.0
+
+# For YAML parsing (Helm values, Kubernetes manifests)
+PyYAML==6.0.1
+
+# These tools are included in Python standard library:
+# - json (for parsing JSON outputs)
+# - subprocess (for running shell commands)
+# - re (for regex pattern matching)
+# - pathlib (for file operations)
+# - datetime (for timestamp handling)
+# - collections (for Counter, etc.)
+# - logging (for tool logging)
