@@ -1,0 +1,11 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: analysis-agent
+  labels:
+    app: devops-rca
+    monitoring: enabled
+    environment: production
+  annotations:
+    description: "AI-powered DevOps Root Cause Analysis system"

@@ -1,0 +1,186 @@
+---
+# ServiceAccount for Webhook Service
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: webhook-sa
+  namespace: analysis-agent
+  labels:
+    app: devops-rca
+    component: webhook
+
+---
+# ServiceAccount for Notifier Service
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: notifier-sa
+  namespace: analysis-agent
+  labels:
+    app: devops-rca
+    component: notifier
+
+---
+# ServiceAccount for Kagent Agent
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agent-sa
+  namespace: analysis-agent
+  labels:
+    app: devops-rca
+    component: agent
+
+---
+# ClusterRole for Agent (Read-only access to cluster resources)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: devops-rca-agent-reader
+  labels:
+    app: devops-rca
+rules:
+# Core resources
+- apiGroups: [""]
+  resources:
+    - pods
+    - pods/log
+    - services
+    - endpoints
+    - events
+    - configmaps
+    - secrets
+    - namespaces
+    - nodes
+    - persistentvolumes
+    - persistentvolumeclaims
+  verbs: ["get", "list", "watch"]
+
+# Apps resources
+- apiGroups: ["apps"]
+  resources:
+    - deployments
+    - replicasets
+    - statefulsets
+    - daemonsets
+  verbs: ["get", "list", "watch"]
+
+# Batch resources
+- apiGroups: ["batch"]
+  resources:
+    - jobs
+    - cronjobs
+  verbs: ["get", "list", "watch"]
+
+# Networking resources
+- apiGroups: ["networking.k8s.io"]
+  resources:
+    - ingresses
+    - networkpolicies
+  verbs: ["get", "list", "watch"]
+
+# Storage resources
+- apiGroups: ["storage.k8s.io"]
+  resources:
+    - storageclasses
+    - volumeattachments
+  verbs: ["get", "list", "watch"]
+
+# Autoscaling resources
+- apiGroups: ["autoscaling"]
+  resources:
+    - horizontalpodautoscalers
+  verbs: ["get", "list", "watch"]
+
+# Policy resources
+- apiGroups: ["policy"]
+  resources:
+    - poddisruptionbudgets
+  verbs: ["get", "list", "watch"]
+
+# Metrics (if metrics-server is installed)
+- apiGroups: ["metrics.k8s.io"]
+  resources:
+    - pods
+    - nodes
+  verbs: ["get", "list"]
+
+# ArgoCD CRDs (optional, if ArgoCD is installed)
+- apiGroups: ["argoproj.io"]
+  resources:
+    - applications
+    - appprojects
+  verbs: ["get", "list", "watch"]
+
+---
+# ClusterRoleBinding for Agent
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: devops-rca-agent-reader-binding
+  labels:
+    app: devops-rca
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: devops-rca-agent-reader
+subjects:
+- kind: ServiceAccount
+  name: agent-sa
+  namespace: analysis-agent
+
+---
+# Role for Webhook Service (namespace-scoped)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: webhook-role
+  namespace: analysis-agent
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list"]
+
+---
+# RoleBinding for Webhook Service
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: webhook-role-binding
+  namespace: analysis-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: webhook-role
+subjects:
+- kind: ServiceAccount
+  name: webhook-sa
+  namespace: analysis-agent
+
+---
+# Role for Notifier Service (namespace-scoped)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: notifier-role
+  namespace: analysis-agent
+rules:
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list"]
+
+---
+# RoleBinding for Notifier Service
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: notifier-role-binding
+  namespace: analysis-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: notifier-role
+subjects:
+- kind: ServiceAccount
+  name: notifier-sa
+  namespace: analysis-agent

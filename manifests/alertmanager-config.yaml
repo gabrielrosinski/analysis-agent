@@ -1,0 +1,130 @@
+---
+# AlertManager Configuration for DevOps RCA Agent
+#
+# This is a ConfigMap that should be applied to patch your existing AlertManager configuration.
+# Adjust based on your Prometheus stack installation.
+#
+# For kube-prometheus-stack, you typically patch the alertmanager-config secret.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: devops-rca-alertmanager-config
+  namespace: monitoring
+  labels:
+    app: alertmanager
+    component: config
+  annotations:
+    description: "AlertManager configuration for DevOps RCA webhook integration"
+data:
+  alertmanager.yml: |
+    global:
+      resolve_timeout: 5m
+
+    # Templates for notifications (optional)
+    templates:
+    - '/etc/alertmanager/template/*.tmpl'
+
+    # Main routing tree
+    route:
+      group_by: ['alertname', 'cluster', 'service']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 12h
+      receiver: 'default-receiver'
+
+      # Route critical alerts immediately to RCA agent
+      routes:
+      - match:
+          severity: critical
+        receiver: 'devops-rca-agent'
+        group_wait: 5s
+        continue: true  # Also send to other receivers if needed
+
+      - match:
+          severity: warning
+        receiver: 'devops-rca-agent'
+        group_wait: 30s
+        continue: true
+
+      # Add more routes as needed
+      - match:
+          alertname: Watchdog
+        receiver: 'null'  # Ignore Watchdog alerts
+
+    # Inhibition rules (optional)
+    inhibit_rules:
+    - source_match:
+        severity: 'critical'
+      target_match:
+        severity: 'warning'
+      equal: ['alertname', 'cluster', 'service']
+
+    # Receivers
+    receivers:
+    # DevOps RCA Agent webhook receiver
+    - name: 'devops-rca-agent'
+      webhook_configs:
+      - url: 'http://webhook-service.analysis-agent.svc.cluster.local:8080/api/v1/webhook/alertmanager'
+        send_resolved: true
+        http_config:
+          follow_redirects: true
+        max_alerts: 0  # No limit on alerts per notification
+
+    # Default receiver (can be email, Slack, etc.)
+    - name: 'default-receiver'
+      # Add your default notification config here
+      # webhook_configs:
+      # - url: 'http://your-other-webhook'
+
+    # Null receiver for ignored alerts
+    - name: 'null'
+
+---
+# Instructions for applying this configuration:
+#
+# Option 1: If using kube-prometheus-stack Helm chart
+# -------------------------------------------------
+# The chart manages AlertManager config via a Helm value.
+# Update your values.yaml:
+#
+# alertmanager:
+#   config:
+#     global:
+#       resolve_timeout: 5m
+#     route:
+#       group_by: ['alertname', 'cluster', 'service']
+#       receiver: 'default-receiver'
+#       routes:
+#       - match:
+#           severity: critical
+#         receiver: 'devops-rca-agent'
+#         continue: true
+#     receivers:
+#     - name: 'devops-rca-agent'
+#       webhook_configs:
+#       - url: 'http://webhook-service.analysis-agent.svc.cluster.local:8080/api/v1/webhook/alertmanager'
+#
+# Then upgrade the release:
+# helm upgrade prometheus prometheus-community/kube-prometheus-stack -n monitoring -f values.yaml
+#
+# Option 2: Manual patch of existing AlertManager
+# -----------------------------------------------
+# 1. Get current config:
+#    kubectl get secret alertmanager-prometheus-kube-prometheus-alertmanager -n monitoring -o jsonpath='{.data.alertmanager\.yaml}' | base64 -d > current-config.yaml
+#
+# 2. Edit current-config.yaml to add devops-rca-agent receiver
+#
+# 3. Create new secret:
+#    kubectl create secret generic alertmanager-prometheus-kube-prometheus-alertmanager \
+#      --from-file=alertmanager.yaml=current-config.yaml \
+#      -n monitoring \
+#      --dry-run=client -o yaml | kubectl apply -f -
+#
+# 4. Reload AlertManager:
+#    kubectl rollout restart statefulset/alertmanager-prometheus-kube-prometheus-alertmanager -n monitoring
+#
+# Option 3: Using this ConfigMap directly (if your setup supports it)
+# -------------------------------------------------------------------
+# kubectl apply -f manifests/alertmanager-config.yaml
+# kubectl rollout restart statefulset/alertmanager-<your-release> -n monitoring

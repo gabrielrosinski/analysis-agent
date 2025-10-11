@@ -1,0 +1,23 @@
+---
+# PersistentVolumeClaim for Agent Memory
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: agent-memory-pvc
+  namespace: analysis-agent
+  labels:
+    app: devops-rca
+    component: agent
+  annotations:
+    description: "Persistent storage for agent knowledge base and incident reports"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: local-path  # K3s default; adjust for your cluster
+  # For other clusters, common storage classes:
+  # - standard (GKE)
+  # - gp2/gp3 (EKS)
+  # - managed-premium (AKS)

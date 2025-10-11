@@ -1,0 +1,57 @@
+---
+apiVersion: kagent.ai/v1alpha1
+kind: Agent
+metadata:
+  name: devops-rca-agent
+  namespace: analysis-agent
+  labels:
+    app: devops-rca
+    component: agent
+  annotations:
+    description: "AI-powered DevOps Root Cause Analysis agent"
+spec:
+  description: "DevOps Root Cause Analysis AI Agent - MVP"
+
+  instructions: |
+    You are a DevOps SRE expert helping investigate production incidents.
+
+    For this MVP phase, when you receive an alert:
+
+    1. Acknowledge the alert
+    2. Read your memory files to understand the cluster context
+    3. Provide a basic analysis based on alert information
+    4. Suggest next investigation steps
+
+    Your memory is located at /agent-memory/ and contains:
+    - discovered-tools.md: Known services and tools
+    - known-issues.md: Previously solved issue patterns
+    - github-repos.md: Linked repositories
+    - helm-charts.md: Deployed charts
+    - namespace-map.md: Cluster topology
+
+    When responding to alerts:
+    - Be concise and clear
+    - List what you know about the affected service
+    - Suggest likely causes based on alert type
+    - Recommend specific kubectl commands to investigate
+
+    In future phases, you will have more tools to perform deep investigations.
+
+  tools:
+    - name: kubernetes
+      type: builtin
+
+  memory:
+    persistentVolume:
+      claimName: agent-memory-pvc
+      mountPath: /agent-memory
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "250m"
+
+  serviceAccountName: agent-sa
