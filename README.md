@@ -43,12 +43,43 @@ Prometheus Alert → Webhook Service → Kagent AI Agent → Investigation → R
 
 ## Features
 
-- **Alert-Driven**: Automatically triggered by Prometheus AlertManager
-- **Intelligent Analysis**: Uses AI to correlate logs, events, metrics, and configuration changes
-- **Multiple Tools**: Kubernetes API, Prometheus, Helm, GitHub API, log analysis
-- **Persistent Memory**: Maintains knowledge base of discovered tools and known issues
-- **Comprehensive Reports**: Detailed incident reports with root cause and step-by-step solutions
-- **Email Notifications**: Styled HTML emails with severity-based routing
+### Core Capabilities
+- 🚨 **Alert-Driven Investigation**: Automatically triggered by Prometheus AlertManager webhooks
+- 🧠 **AI-Powered Analysis**: Uses Kagent AI framework to correlate logs, events, metrics, and configuration changes
+- 🔍 **Multi-Source Investigation**:
+  - Kubernetes API (pods, events, deployments, services)
+  - Container logs with intelligent pattern matching
+  - Helm release history and configuration analysis
+  - GitHub commit and workflow correlation (optional)
+  - Prometheus metrics queries
+
+### Intelligence & Learning
+- 📚 **Persistent Memory**: Maintains markdown-based knowledge base of:
+  - Discovered tools and services in cluster
+  - Previously solved incidents and patterns
+  - Helm releases and deployment history
+  - GitHub repositories and workflows
+- 🎯 **Pattern Recognition**: Identifies common errors (connection failures, OOM, authentication issues, etc.)
+- 📈 **Learning System**: Each investigation updates knowledge base for future incidents
+
+### Reporting & Notifications
+- 📊 **Comprehensive Reports**:
+  - Executive summary
+  - Chronological timeline
+  - Root cause analysis with evidence
+  - Immediate fix (stop the bleeding)
+  - Root fix (permanent solution)
+  - Prevention recommendations
+- 📧 **Styled HTML Emails**:
+  - Professional design with syntax-highlighted code blocks
+  - Severity-based routing (critical/warning/info)
+  - Color-coded sections for readability
+
+### Operational Excellence
+- ⚡ **Alert-Agnostic**: Handles ANY AlertManager alert (not just predefined types)
+- 🔒 **Read-Only**: Agent has no write permissions (safe by design)
+- 📝 **Audit Trail**: All investigations saved to persistent storage
+- 🔄 **High Availability**: Services designed for multiple replicas
 
 ## Architecture
 
@@ -78,12 +109,30 @@ Prometheus Alert → Webhook Service → Kagent AI Agent → Investigation → R
 
 ### Prerequisites
 
-- Kubernetes 1.28+ (K3s for local development)
-- Prometheus + AlertManager configured
-- Kagent operator installed
-- Helm 3.x
-- Docker / Podman
-- Gmail account with app password (for notifications)
+#### Required
+- **Kubernetes** 1.28+ (tested with K3s 1.28, AWS EKS 1.28+)
+- **kubectl** 1.28+ matching your cluster version
+- **Helm** 3.x (tested with 3.12+)
+- **Docker** or Podman for building images
+- **Kagent Operator** (installation guide below)
+- **Prometheus + AlertManager** configured and running
+  - AlertManager v0.25+ with webhook support
+  - Prometheus with pod monitoring enabled
+- **Gmail Account** with app password for email notifications
+
+#### Optional
+- **GitHub Personal Access Token** - For commit/workflow correlation (read-only scope)
+- **Private Container Registry** - If not using Docker Hub
+
+#### System Resources (Minimum)
+- **Agent**: 512Mi RAM, 250m CPU (requested) / 1Gi RAM, 500m CPU (limit)
+- **Webhook Service**: 128Mi RAM, 100m CPU per replica (2 replicas recommended)
+- **Notifier Service**: 128Mi RAM, 100m CPU per replica (2 replicas recommended)
+- **Storage**: 5GB PersistentVolume for agent memory
+
+#### Development Tools (Optional)
+- **Python** 3.11+ for local testing of custom tools
+- **Git** for version control
 
 ### Installation
 
@@ -174,6 +223,70 @@ The agent maintains a knowledge base in `/agent-memory/`:
 - `helm-charts.md` - Deployed charts
 - `reports/` - Incident reports
 
+## Quick Reference
+
+### Common Commands
+
+```bash
+# Verify system health
+./tests/verify-agent.sh
+
+# Send test alert
+./tests/send-test-alert.sh
+
+# Deploy test failure scenario
+./tests/create-test-failure.sh
+
+# Monitor webhook service
+kubectl logs -f -n analysis-agent -l app=webhook-service
+
+# Monitor notifier service
+kubectl logs -f -n analysis-agent -l app=notifier-service
+
+# Monitor agent activity
+kubectl logs -f -n kagent-system -l app=kagent-operator
+
+# View saved reports
+kubectl exec -n analysis-agent <agent-pod> -- ls -la /agent-memory/reports/
+
+# Read latest report
+kubectl exec -n analysis-agent <agent-pod> -- cat /agent-memory/reports/<report-file>
+
+# Check Gmail credentials
+kubectl get secret gmail-credentials -n analysis-agent
+
+# Check email recipients configuration
+kubectl get secret email-recipients -n analysis-agent
+
+# Port-forward webhook for testing
+kubectl port-forward svc/webhook-service 8080:8080 -n analysis-agent
+
+# Port-forward notifier for testing
+kubectl port-forward svc/notifier-service 8081:8080 -n analysis-agent
+
+# Test email notification
+curl -X POST http://localhost:8081/api/v1/test-email \
+  -H "Content-Type: application/json" \
+  -d '{"recipients": ["your-email@example.com"]}'
+```
+
+### Troubleshooting Quick Links
+
+- **Alert not firing?** → Check Prometheus targets and AlertManager configuration
+- **Webhook not receiving alerts?** → Verify AlertManager webhook config and network connectivity
+- **Agent not investigating?** → Check Kagent operator logs and agent resource status
+- **No email sent?** → Test SMTP with notifier service test endpoint
+- **Full troubleshooting guide:** [tests/README.md](tests/README.md#troubleshooting-tests)
+
+### Service Endpoints
+
+| Service | Internal URL | Purpose |
+|---------|-------------|---------|
+| Webhook | `http://webhook-service.analysis-agent.svc.cluster.local:8080` | AlertManager webhook receiver |
+| Notifier | `http://notifier-service.analysis-agent.svc.cluster.local:8080` | Email notification service |
+| Webhook Health | `http://webhook-service.analysis-agent.svc.cluster.local:8080/health` | Health check |
+| Notifier Health | `http://notifier-service.analysis-agent.svc.cluster.local:8080/health` | Health check |
+
 ## Example Report
 
 When an issue occurs, you'll receive an email like this:
@@ -218,18 +331,14 @@ Primary: Database connection string missing DB_PASSWORD environment variable
 
 ## Documentation
 
-Detailed documentation available in `/docs`:
+Detailed guides available:
 
-- [Prerequisites](docs/PREREQUISITES.md) - Required tools and setup
-- [Kagent Installation](docs/KAGENT_INSTALLATION.md) - Install Kagent operator
-- [GitHub API Setup](docs/GITHUB_API_SETUP.md) - Configure GitHub integration
-- [Gmail Setup](docs/GMAIL_SETUP.md) - Configure email notifications
-- [Testing Strategy](docs/TESTING_STRATEGY.md) - Testing approach
-- [Future Enhancements](docs/FUTURE_MCP.md) - MCP integration plans
-
-## Development Plan
-
-See [development_plan.md](development_plan.md) for detailed implementation phases.
+- **[Testing Guide](tests/README.md)** - Comprehensive testing strategy, test scripts, and troubleshooting
+- **[Webhook Service](services/webhook/README.md)** - AlertManager integration and configuration
+- **[Notifier Service](services/notifier/README.md)** - Email notification setup and Gmail configuration
+- **[Custom Tools](tools/README.md)** - Tool development guide and API reference
+- **[Development Plan](development_plan.md)** - Implementation phases and roadmap
+- **[CLAUDE.md](CLAUDE.md)** - Developer guide for working with this codebase
 
 ## Project Structure
 
