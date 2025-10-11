@@ -1,0 +1,139 @@
+---
+# Notifier Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notifier-service
+  namespace: analysis-agent
+  labels:
+    app: devops-rca
+    component: notifier-service
+spec:
+  replicas: 2  # HA for email service
+  selector:
+    matchLabels:
+      app: devops-rca
+      component: notifier-service
+  template:
+    metadata:
+      labels:
+        app: devops-rca
+        component: notifier-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: notifier-sa
+
+      containers:
+      - name: notifier
+        image: your-dockerhub/analysis-agent-notifier:v0.1.0
+        imagePullPolicy: Always
+
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+
+        env:
+        # Logging
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: PORT
+          value: "8080"
+
+        # SMTP Configuration (Gmail)
+        - name: SMTP_HOST
+          value: "smtp.gmail.com"
+        - name: SMTP_PORT
+          value: "587"
+        - name: SMTP_USER
+          valueFrom:
+            secretKeyRef:
+              name: gmail-credentials
+              key: username
+        - name: SMTP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: gmail-credentials
+              key: password
+        - name: SMTP_FROM
+          valueFrom:
+            secretKeyRef:
+              name: gmail-credentials
+              key: from-address
+
+        # Recipients by severity (comma-separated)
+        - name: RECIPIENTS_CRITICAL
+          valueFrom:
+            secretKeyRef:
+              name: email-recipients
+              key: recipients-critical
+        - name: RECIPIENTS_WARNING
+          valueFrom:
+            secretKeyRef:
+              name: email-recipients
+              key: recipients-warning
+        - name: RECIPIENTS_INFO
+          valueFrom:
+            secretKeyRef:
+              name: email-recipients
+              key: recipients-info
+
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+
+---
+# Notifier Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: notifier-service
+  namespace: analysis-agent
+  labels:
+    app: devops-rca
+    component: notifier-service
+spec:
+  type: ClusterIP
+  selector:
+    app: devops-rca
+    component: notifier-service
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
+    name: http
+  sessionAffinity: None
