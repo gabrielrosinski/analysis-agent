@@ -66,7 +66,9 @@ kubectl apply -f manifests/storage.yaml
 # Initialize agent memory with templates
 ./scripts/init-memory.sh
 
-# Configure secrets (edit first with your Gmail credentials)
+# Configure secrets
+cp manifests/secrets.yaml.template manifests/secrets.yaml
+# Edit manifests/secrets.yaml with your Gmail credentials
 kubectl apply -f manifests/secrets.yaml
 
 # Deploy services

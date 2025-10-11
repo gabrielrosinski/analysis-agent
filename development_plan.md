@@ -2365,7 +2365,9 @@ spec:
 # 3. Create app password for "Mail"
 # 4. Use that password in secrets.yaml
 
-# Create secret
+# Create secret from template
+cp manifests/secrets.yaml.template manifests/secrets.yaml
+# Edit manifests/secrets.yaml with your credentials
 kubectl apply -f manifests/secrets.yaml
 
 # Build and deploy

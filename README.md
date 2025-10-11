@@ -43,43 +43,29 @@ Prometheus Alert → Webhook Service → Kagent AI Agent → Investigation → R
 
 ## Features
 
-### Core Capabilities
-- 🚨 **Alert-Driven Investigation**: Automatically triggered by Prometheus AlertManager webhooks
-- 🧠 **AI-Powered Analysis**: Uses Kagent AI framework to correlate logs, events, metrics, and configuration changes
-- 🔍 **Multi-Source Investigation**:
-  - Kubernetes API (pods, events, deployments, services)
-  - Container logs with intelligent pattern matching
-  - Helm release history and configuration analysis
-  - GitHub commit and workflow correlation (optional)
-  - Prometheus metrics queries
+### 🔍 Core Capabilities
+- **Alert-Agnostic Analysis**: Investigates ANY AlertManager alert using generic investigation patterns
+- **AI-Powered Reasoning**: Claude-powered agent correlates logs, events, metrics, and configuration changes
+- **Multi-Tool Investigation**: Kubernetes API, Prometheus queries, Helm analysis, log parsing, GitHub integration
+- **Root Cause Determination**: Identifies primary causes and contributing factors with supporting evidence
 
-### Intelligence & Learning
-- 📚 **Persistent Memory**: Maintains markdown-based knowledge base of:
-  - Discovered tools and services in cluster
-  - Previously solved incidents and patterns
-  - Helm releases and deployment history
-  - GitHub repositories and workflows
-- 🎯 **Pattern Recognition**: Identifies common errors (connection failures, OOM, authentication issues, etc.)
-- 📈 **Learning System**: Each investigation updates knowledge base for future incidents
+### 🧠 Intelligence & Learning
+- **Persistent Memory System**: Markdown-based knowledge base (`/agent-memory/`) that grows over time
+- **Pattern Recognition**: Learns from past incidents and applies solutions to similar problems
+- **Contextual Analysis**: Reads alert labels/annotations and correlates with system state
+- **Exit Code Intelligence**: Interprets container exit codes (137=OOMKilled, 143=SIGTERM, etc.)
 
-### Reporting & Notifications
-- 📊 **Comprehensive Reports**:
-  - Executive summary
-  - Chronological timeline
-  - Root cause analysis with evidence
-  - Immediate fix (stop the bleeding)
-  - Root fix (permanent solution)
-  - Prevention recommendations
-- 📧 **Styled HTML Emails**:
-  - Professional design with syntax-highlighted code blocks
-  - Severity-based routing (critical/warning/info)
-  - Color-coded sections for readability
+### 📊 Reporting & Notifications
+- **Comprehensive Reports**: Detailed markdown reports with executive summary, timeline, root cause, and solutions
+- **Styled HTML Emails**: Professional email templates with syntax highlighting and color-coded severity
+- **Severity-Based Routing**: Critical → oncall, Warning → devops, Info → alerts list
+- **Actionable Solutions**: Exact kubectl/helm commands, not placeholders
 
-### Operational Excellence
-- ⚡ **Alert-Agnostic**: Handles ANY AlertManager alert (not just predefined types)
-- 🔒 **Read-Only**: Agent has no write permissions (safe by design)
-- 📝 **Audit Trail**: All investigations saved to persistent storage
-- 🔄 **High Availability**: Services designed for multiple replicas
+### ⚙️ Operational Excellence
+- **Zero False Positives**: Only triggers on actual AlertManager alerts (no polling/scanning)
+- **Alert Deduplication**: 5-minute cache prevents duplicate investigations
+- **High Availability**: Webhook service runs with 2 replicas
+- **GitOps Ready**: All configurations managed via Kubernetes manifests
 
 ## Architecture
 
@@ -109,30 +95,22 @@ Prometheus Alert → Webhook Service → Kagent AI Agent → Investigation → R
 
 ### Prerequisites
 
-#### Required
-- **Kubernetes** 1.28+ (tested with K3s 1.28, AWS EKS 1.28+)
-- **kubectl** 1.28+ matching your cluster version
-- **Helm** 3.x (tested with 3.12+)
-- **Docker** or Podman for building images
-- **Kagent Operator** (installation guide below)
-- **Prometheus + AlertManager** configured and running
-  - AlertManager v0.25+ with webhook support
-  - Prometheus with pod monitoring enabled
-- **Gmail Account** with app password for email notifications
+**Required:**
+- **Kubernetes**: v1.28+ (K3s 1.28+ recommended for local development)
+- **Kagent Operator**: Latest version from [kagent.dev](https://kagent.dev/)
+- **Prometheus + AlertManager**: v2.45+ (via kube-prometheus-stack Helm chart)
+- **Helm**: v3.12+
+- **kubectl**: v1.28+
+- **Docker or Podman**: v24.0+ (for building images)
+- **Gmail Account**: With app password enabled (2FA required)
 
-#### Optional
-- **GitHub Personal Access Token** - For commit/workflow correlation (read-only scope)
-- **Private Container Registry** - If not using Docker Hub
+**Optional:**
+- **GitHub Personal Access Token**: For commit/workflow correlation (read-only scope)
+- **Grafana**: v10.0+ for visualization (included in kube-prometheus-stack)
 
-#### System Resources (Minimum)
-- **Agent**: 512Mi RAM, 250m CPU (requested) / 1Gi RAM, 500m CPU (limit)
-- **Webhook Service**: 128Mi RAM, 100m CPU per replica (2 replicas recommended)
-- **Notifier Service**: 128Mi RAM, 100m CPU per replica (2 replicas recommended)
-- **Storage**: 5GB PersistentVolume for agent memory
-
-#### Development Tools (Optional)
-- **Python** 3.11+ for local testing of custom tools
-- **Git** for version control
+**System Resources:**
+- Minimum: 4 vCPU, 8GB RAM, 20GB storage
+- Recommended: 8 vCPU, 16GB RAM, 50GB storage
 
 ### Installation
 
@@ -153,6 +131,7 @@ kubectl apply -f manifests/storage.yaml
 ./scripts/init-memory.sh
 
 # 5. Configure Gmail credentials
+cp manifests/secrets.yaml.template manifests/secrets.yaml
 # Edit manifests/secrets.yaml with your credentials
 kubectl apply -f manifests/secrets.yaml
 
@@ -205,7 +184,7 @@ kubectl logs -f -n kagent-system -l app=kagent-operator
 
 ### Alert Routing
 
-Edit `manifests/secrets.yaml` to configure email recipients:
+Configure email recipients in `manifests/secrets.yaml`:
 
 ```yaml
 recipients-critical: "oncall@example.com,sre@example.com"
@@ -222,70 +201,6 @@ The agent maintains a knowledge base in `/agent-memory/`:
 - `github-repos.md` - Linked repositories
 - `helm-charts.md` - Deployed charts
 - `reports/` - Incident reports
-
-## Quick Reference
-
-### Common Commands
-
-```bash
-# Verify system health
-./tests/verify-agent.sh
-
-# Send test alert
-./tests/send-test-alert.sh
-
-# Deploy test failure scenario
-./tests/create-test-failure.sh
-
-# Monitor webhook service
-kubectl logs -f -n analysis-agent -l app=webhook-service
-
-# Monitor notifier service
-kubectl logs -f -n analysis-agent -l app=notifier-service
-
-# Monitor agent activity
-kubectl logs -f -n kagent-system -l app=kagent-operator
-
-# View saved reports
-kubectl exec -n analysis-agent <agent-pod> -- ls -la /agent-memory/reports/
-
-# Read latest report
-kubectl exec -n analysis-agent <agent-pod> -- cat /agent-memory/reports/<report-file>
-
-# Check Gmail credentials
-kubectl get secret gmail-credentials -n analysis-agent
-
-# Check email recipients configuration
-kubectl get secret email-recipients -n analysis-agent
-
-# Port-forward webhook for testing
-kubectl port-forward svc/webhook-service 8080:8080 -n analysis-agent
-
-# Port-forward notifier for testing
-kubectl port-forward svc/notifier-service 8081:8080 -n analysis-agent
-
-# Test email notification
-curl -X POST http://localhost:8081/api/v1/test-email \
-  -H "Content-Type: application/json" \
-  -d '{"recipients": ["your-email@example.com"]}'
-```
-
-### Troubleshooting Quick Links
-
-- **Alert not firing?** → Check Prometheus targets and AlertManager configuration
-- **Webhook not receiving alerts?** → Verify AlertManager webhook config and network connectivity
-- **Agent not investigating?** → Check Kagent operator logs and agent resource status
-- **No email sent?** → Test SMTP with notifier service test endpoint
-- **Full troubleshooting guide:** [tests/README.md](tests/README.md#troubleshooting-tests)
-
-### Service Endpoints
-
-| Service | Internal URL | Purpose |
-|---------|-------------|---------|
-| Webhook | `http://webhook-service.analysis-agent.svc.cluster.local:8080` | AlertManager webhook receiver |
-| Notifier | `http://notifier-service.analysis-agent.svc.cluster.local:8080` | Email notification service |
-| Webhook Health | `http://webhook-service.analysis-agent.svc.cluster.local:8080/health` | Health check |
-| Notifier Health | `http://notifier-service.analysis-agent.svc.cluster.local:8080/health` | Health check |
 
 ## Example Report
 
@@ -331,14 +246,28 @@ Primary: Database connection string missing DB_PASSWORD environment variable
 
 ## Documentation
 
-Detailed guides available:
+**Core Documentation:**
+- [Development Plan](development_plan.md) - Detailed 6-phase implementation roadmap
+- [CLAUDE.md](CLAUDE.md) - Architecture details and development guide
 
-- **[Testing Guide](tests/README.md)** - Comprehensive testing strategy, test scripts, and troubleshooting
-- **[Webhook Service](services/webhook/README.md)** - AlertManager integration and configuration
-- **[Notifier Service](services/notifier/README.md)** - Email notification setup and Gmail configuration
-- **[Custom Tools](tools/README.md)** - Tool development guide and API reference
-- **[Development Plan](development_plan.md)** - Implementation phases and roadmap
-- **[CLAUDE.md](CLAUDE.md)** - Developer guide for working with this codebase
+**Service Documentation:**
+- [Webhook Service](services/webhook/README.md) - AlertManager webhook receiver
+- [Notifier Service](services/notifier/README.md) - Email notification service
+
+**Testing Documentation:**
+- [Testing Guide](tests/README.md) - Comprehensive testing scenarios and scripts
+- [Verification Script](tests/verify-agent.sh) - System health check
+- [Test Failure Creator](tests/create-test-failure.sh) - Deploy failure scenarios
+- [Send Test Alert](tests/send-test-alert.sh) - Manual alert injection
+
+**Example Scenarios:**
+- [CrashLoop Scenario](examples/crashloop-scenario/README.md) - Database connection failure
+- [OOMKilled Scenario](examples/oom-scenario/README.md) - Memory exhaustion
+- [ImagePull Scenario](examples/imagepull-scenario/README.md) - Invalid image tag
+
+## Development Plan
+
+See [development_plan.md](development_plan.md) for detailed implementation phases.
 
 ## Project Structure
 
@@ -404,6 +333,78 @@ For issues and questions:
 ## License
 
 [Your chosen license]
+
+## Quick Reference
+
+### Common Commands
+
+```bash
+# Deploy everything
+kubectl apply -f manifests/
+
+# Check system status
+kubectl get all -n analysis-agent
+
+# View recent reports
+AGENT_POD=$(kubectl get pods -n analysis-agent -l component=agent -o jsonpath='{.items[0].metadata.name}')
+kubectl exec -it -n analysis-agent $AGENT_POD -- ls -lh /agent-memory/reports/
+
+# Tail all logs
+kubectl logs -f -n analysis-agent --all-containers=true
+
+# Port forward services
+kubectl port-forward -n analysis-agent svc/webhook-service 8080:8080
+kubectl port-forward -n analysis-agent svc/notifier-service 8081:8080
+
+# Test webhook
+curl -X POST http://localhost:8080/api/v1/webhook/test \
+  -H "Content-Type: application/json" \
+  -d '{"test": "alert"}'
+
+# Test notifier
+curl -X POST http://localhost:8081/api/v1/test-email \
+  -H "Content-Type: application/json" \
+  -d '["your-email@example.com"]'
+
+# Delete everything
+kubectl delete namespace analysis-agent
+```
+
+### Troubleshooting
+
+**Webhook not receiving alerts:**
+```bash
+# Check AlertManager config
+kubectl get configmap -n monitoring alertmanager-config -o yaml
+
+# Test connectivity from monitoring namespace
+kubectl run test -n monitoring --rm -i --restart=Never --image=curlimages/curl -- \
+  curl -v http://webhook-service.analysis-agent.svc.cluster.local:8080/health
+```
+
+**Agent not investigating:**
+```bash
+# Check Kagent operator
+kubectl get pods -n kagent-system
+
+# Check agent resource
+kubectl get agent devops-rca-agent -n analysis-agent
+
+# Verify RBAC permissions
+kubectl auth can-i list pods --as=system:serviceaccount:analysis-agent:agent-sa --all-namespaces
+```
+
+**Emails not sending:**
+```bash
+# Check Gmail credentials
+kubectl get secret gmail-credentials -n analysis-agent -o yaml
+
+# Test notifier directly
+kubectl port-forward -n analysis-agent svc/notifier-service 8080:8080
+curl -X POST http://localhost:8080/api/v1/test-email \
+  -H "Content-Type: application/json" \
+  -d '["your-email@example.com"]'
+```
 
 ## Acknowledgments
 
