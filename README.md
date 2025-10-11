@@ -6,6 +6,29 @@
 
 This project implements an intelligent AI agent that automatically investigates Kubernetes alerts, identifies root causes, and provides actionable solutions. Built on the [Kagent](https://kagent.dev/) framework, it combines Kubernetes-native operations with AI reasoning.
 
+### Alert-Agnostic Design
+
+**The system can analyze ANY alert that AlertManager sends.** It's not limited to specific alert types because:
+
+1. **Generic Investigation Process**: The agent doesn't have hardcoded alert handlers. Instead, it:
+   - Reads alert labels/annotations (present in ANY alert)
+   - Uses generic tools (kubectl, logs, Prometheus, Helm)
+   - Applies AI reasoning to correlate data
+   - Determines root cause based on evidence
+
+2. **Memory-Based Learning**: The `known-issues.md` contains common patterns, but the agent can:
+   - Analyze novel/unknown alert types
+   - Learn from them
+   - Add new patterns to memory over time
+
+3. **Flexible Tool Set**: The custom tools (log analyzer, Helm analyzer, etc.) work on:
+   - Pod logs (regardless of alert type)
+   - Kubernetes events (any resource)
+   - Helm configurations (any chart)
+   - Metrics (any query)
+
+Whether it's a pod crash, database issue, certificate expiration, network policy violation, or custom application alert - the agent investigates using the same intelligent, tool-based approach.
+
 ## How It Works
 
 ```
@@ -235,12 +258,20 @@ analysis-agent/
 └── examples/                      # Example failure scenarios
 ```
 
-## Supported Alert Types (MVP)
+## Common Alert Examples (MVP)
+
+The system handles **any alert type**, but these examples demonstrate typical scenarios:
 
 - **Pod Issues**: CrashLoopBackOff, ImagePullBackOff, Pending
 - **Resource Issues**: OOMKilled, CPU throttling
 - **Infrastructure**: Node problems, storage issues
 - **Application**: Health check failures, connection errors
+- **Security**: Certificate expiration, RBAC violations
+- **Storage**: PVC binding failures, volume mount issues
+- **Networking**: DNS failures, ingress misconfigurations
+- **Custom Alerts**: Any application-specific alerts from your services
+
+The agent's generic investigation approach works for all AlertManager alerts, not just these examples.
 
 ## Future Enhancements
 
