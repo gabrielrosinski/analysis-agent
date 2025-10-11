@@ -1,0 +1,83 @@
+---
+# OOM (Out of Memory) Scenario - Simulates Memory Leak
+#
+# This deployment will be killed by OOM (Out of Memory) killer because:
+# 1. Memory limit is set to 128Mi
+# 2. Application continuously allocates memory without releasing
+# 3. Memory usage exceeds limit
+# 4. Kubernetes kills the container with exit code 137 (SIGKILL)
+# 5. Pod restarts and cycle repeats
+#
+# Expected Alert: KubePodCrashLooping or KubeContainerOOMKilled
+# Expected Investigation: Agent should identify exit code 137 (OOMKilled)
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oom-test-app
+  labels:
+    app: oom-test
+    scenario: memory-leak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oom-test
+  template:
+    metadata:
+      labels:
+        app: oom-test
+        scenario: memory-leak
+    spec:
+      containers:
+      - name: app
+        image: busybox:latest
+        command:
+          - sh
+          - -c
+          - |
+            echo "Starting memory leak simulation..."
+            echo "Memory limit: 128Mi"
+            echo "Allocated memory will exceed limit..."
+
+            # Create a file that grows continuously
+            # This simulates a memory leak
+            i=0
+            while true; do
+              # Allocate memory by writing to /dev/shm (in-memory filesystem)
+              dd if=/dev/zero of=/dev/shm/leak_$i bs=1M count=20 2>/dev/null
+              echo "Allocated block $i (20MB)"
+              i=$((i + 1))
+              sleep 1
+            done
+
+        env:
+        - name: APP_NAME
+          value: "oom-test-app"
+
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"  # This will be exceeded
+            cpu: "200m"
+
+      restartPolicy: Always
+
+---
+# Service (not actually needed for this failure scenario, but realistic)
+apiVersion: v1
+kind: Service
+metadata:
+  name: oom-test-service
+  labels:
+    app: oom-test
+spec:
+  selector:
+    app: oom-test
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP

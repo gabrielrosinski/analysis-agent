@@ -1,0 +1,96 @@
+---
+# CrashLoop Scenario - Simulates Database Connection Failure
+#
+# This deployment will continuously crash because:
+# 1. It tries to connect to a non-existent database
+# 2. The connection fails
+# 3. The application exits with error code 1
+# 4. Kubernetes restarts the container
+# 5. Cycle repeats -> CrashLoopBackOff
+#
+# Expected Alert: KubePodCrashLooping
+# Expected Investigation: Agent should identify connection refused error in logs
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crashloop-test-app
+  labels:
+    app: crashloop-test
+    scenario: database-connection-failure
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: crashloop-test
+  template:
+    metadata:
+      labels:
+        app: crashloop-test
+        scenario: database-connection-failure
+    spec:
+      containers:
+      - name: app
+        image: busybox:latest
+        command:
+          - sh
+          - -c
+          - |
+            echo "Starting application..."
+            echo "Connecting to database at database-service:5432..."
+
+            # Simulate connection attempt
+            if ! nc -z -w 2 database-service 5432 2>/dev/null; then
+              echo "ERROR: Connection refused: database-service:5432"
+              echo "ERROR: Failed to establish database connection"
+              echo "FATAL: Application startup failed"
+              exit 1
+            fi
+
+            echo "Application started successfully"
+            sleep 3600
+
+        env:
+        - name: DB_HOST
+          value: "database-service"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "appdb"
+        # Missing DB_PASSWORD - common configuration error
+
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - "echo 'Health check'"
+          initialDelaySeconds: 5
+          periodSeconds: 10
+
+      restartPolicy: Always
+
+---
+# Service (not actually needed for this failure scenario, but realistic)
+apiVersion: v1
+kind: Service
+metadata:
+  name: crashloop-test-service
+  labels:
+    app: crashloop-test
+spec:
+  selector:
+    app: crashloop-test
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP

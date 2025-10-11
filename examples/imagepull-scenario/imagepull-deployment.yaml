@@ -1,0 +1,70 @@
+---
+# ImagePullBackOff Scenario - Simulates Invalid Image
+#
+# This deployment will fail to start because:
+# 1. Image tag doesn't exist in the registry
+# 2. Kubernetes repeatedly tries to pull the image
+# 3. Pull fails each time
+# 4. Pod remains in ImagePullBackOff state
+#
+# Expected Alert: KubePodNotReady or KubePodImagePullBackOff
+# Expected Investigation: Agent should identify image pull failure
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: imagepull-test-app
+  labels:
+    app: imagepull-test
+    scenario: invalid-image-tag
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: imagepull-test
+  template:
+    metadata:
+      labels:
+        app: imagepull-test
+        scenario: invalid-image-tag
+    spec:
+      containers:
+      - name: app
+        # This image tag doesn't exist
+        image: nginx:this-tag-does-not-exist-v999
+        imagePullPolicy: Always  # Force pull attempt
+
+        ports:
+        - containerPort: 80
+          name: http
+
+        env:
+        - name: APP_NAME
+          value: "imagepull-test-app"
+
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+
+      restartPolicy: Always
+
+---
+# Service (not actually needed since pod never starts, but realistic)
+apiVersion: v1
+kind: Service
+metadata:
+  name: imagepull-test-service
+  labels:
+    app: imagepull-test
+spec:
+  selector:
+    app: imagepull-test
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+  type: ClusterIP
