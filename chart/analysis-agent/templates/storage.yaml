@@ -1,0 +1,18 @@
+{{- if .Values.storage.enabled -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.storage.pvc.name }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "analysis-agent.agent.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.storage.pvc.accessMode }}
+  {{- if .Values.storage.pvc.storageClassName }}
+  storageClassName: {{ .Values.storage.pvc.storageClassName }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.pvc.size }}
+{{- end }}

@@ -1,0 +1,245 @@
+# Default values for analysis-agent Helm chart
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+## Global settings
+global:
+  # Namespace to install the agent (will be created if not exists)
+  namespace: analysis-agent
+
+## Kagent Configuration
+kagent:
+  # Kagent namespace (must be installed separately)
+  namespace: kagent
+  # ModelConfig name to use for the agent
+  modelConfig: claude-sonnet-config
+
+## Webhook Service Configuration
+webhook:
+  enabled: true
+  replicaCount: 2
+  image:
+    # Pre-built image from GitHub Container Registry
+    # Default: Uses published image - no need to build yourself!
+    # Override: Use --set webhook.image.repository=your-registry/webhook
+    repository: ghcr.io/your-org/analysis-agent-webhook
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8080
+    targetPort: 8080
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  env:
+    - name: LOG_LEVEL
+      value: "info"
+    - name: AGENT_NAME
+      value: "devops-rca-agent"
+    - name: AGENT_NAMESPACE
+      value: "analysis-agent"
+
+## Notifier Service Configuration
+notifier:
+  enabled: true
+  replicaCount: 2
+  image:
+    # Pre-built image from GitHub Container Registry
+    # Default: Uses published image - no need to build yourself!
+    # Override: Use --set notifier.image.repository=your-registry/notifier
+    repository: ghcr.io/your-org/analysis-agent-notifier
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8080
+    targetPort: 8080
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  # Email configuration (secrets)
+  # These should be provided via --set or external secret management
+  email:
+    # Gmail SMTP configuration
+    smtpHost: "smtp.gmail.com"
+    smtpPort: "587"
+    # Credentials (set via --set or secrets)
+    # username: "your-email@gmail.com"
+    # password: "your-app-password"
+    fromAddress: "DevOps RCA Agent <noreply@example.com>"
+    # Recipients by severity
+    recipients:
+      critical: "oncall@example.com,sre@example.com"
+      warning: "devops@example.com"
+      info: "devops-alerts@example.com"
+
+## Agent Configuration
+agent:
+  enabled: true
+  name: devops-rca-agent
+  # API version for Kagent Agent
+  apiVersion: kagent.dev/v1alpha2
+  # Instructions for the agent (can be overridden)
+  instructions: |
+    You are an AI-powered Root Cause Analysis agent for Kubernetes infrastructure.
+    Your role is to investigate alerts from Prometheus AlertManager, identify root causes,
+    and provide actionable solutions to DevOps engineers.
+
+    When you receive an alert, follow this investigation process:
+    1. Parse alert details (labels, annotations, severity)
+    2. Check memory first for known issues
+    3. Gather evidence using all available tools
+    4. Build chronological timeline
+    5. Identify root cause and contributing factors
+    6. Generate step-by-step solutions with exact commands
+    7. Create comprehensive markdown report
+    8. Update memory with learnings
+    9. Send notification via notifier service
+
+  # Custom tools (Python modules)
+  tools:
+    - name: memory_tool
+      type: python
+      module: tools.memory_manager
+      function: memory_tool
+    - name: helm_tool
+      type: python
+      module: tools.helm_analyzer
+      function: helm_tool
+    - name: log_tool
+      type: python
+      module: tools.log_analyzer
+      function: log_tool
+    # GitHub tool (optional - uncomment if GitHub integration is configured)
+    # - name: github_tool
+    #   type: python
+    #   module: tools.github_api
+    #   function: github_tool
+
+## RBAC Configuration
+rbac:
+  create: true
+  # ServiceAccounts
+  serviceAccounts:
+    webhook:
+      create: true
+      name: webhook-sa
+    notifier:
+      create: true
+      name: notifier-sa
+    agent:
+      create: true
+      name: agent-sa
+  # ClusterRole for agent (read-only access)
+  clusterRole:
+    create: true
+    name: devops-rca-agent-role
+    rules:
+      - apiGroups: [""]
+        resources: ["pods", "services", "events", "configmaps", "namespaces", "nodes"]
+        verbs: ["get", "list", "watch"]
+      - apiGroups: [""]
+        resources: ["pods/log"]
+        verbs: ["get", "list"]
+      - apiGroups: ["apps"]
+        resources: ["deployments", "replicasets", "statefulsets", "daemonsets"]
+        verbs: ["get", "list"]
+      - apiGroups: ["batch"]
+        resources: ["jobs", "cronjobs"]
+        verbs: ["get", "list"]
+
+## Storage Configuration
+storage:
+  enabled: true
+  # PersistentVolumeClaim for agent memory
+  pvc:
+    name: agent-memory-pvc
+    storageClassName: ""  # Use default storage class if empty
+    accessMode: ReadWriteOnce
+    size: 5Gi
+  # Agent memory initialization
+  initMemory:
+    enabled: true
+    # Templates to initialize
+    templates:
+      - discovered-tools.md
+      - known-issues.md
+      - github-repos.md
+      - helm-charts.md
+      - namespace-map.md
+
+## Secrets Configuration
+# NOTE: Secrets should be provided externally via:
+# 1. helm install --set-string notifier.email.username=xxx --set-string notifier.email.password=xxx
+# 2. External Secrets Operator
+# 3. Sealed Secrets
+# 4. Manual creation before installing chart
+secrets:
+  # Create secrets from values (NOT RECOMMENDED for production)
+  create: false
+  # Gmail credentials
+  gmail:
+    username: ""
+    password: ""
+  # GitHub credentials (optional)
+  github:
+    token: ""
+
+## AlertManager Integration
+alertmanager:
+  # Enable AlertManager webhook configuration
+  enabled: false
+  # Namespace where AlertManager is deployed
+  namespace: monitoring
+  # Webhook receiver name
+  receiverName: devops-rca-agent
+  # Routes configuration (requires alertmanager.enabled=true)
+  routes:
+    - match:
+        severity: critical
+      receiver: devops-rca-agent
+      continue: true
+    - match:
+        severity: warning
+      receiver: devops-rca-agent
+      continue: true
+
+## ServiceMonitor (Prometheus Operator)
+serviceMonitor:
+  enabled: false
+  namespace: monitoring
+  interval: 30s
+  scrapeTimeout: 10s
+
+## Ingress (optional)
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: rca-agent.example.com
+      paths:
+        - path: /webhook
+          pathType: Prefix
+          service: webhook-service
+        - path: /notifier
+          pathType: Prefix
+          service: notifier-service
+  tls: []
+
+## Node selector and tolerations
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+## Image pull secrets
+imagePullSecrets: []

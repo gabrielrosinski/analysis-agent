@@ -78,54 +78,48 @@ Prometheus Alert → Webhook Service → Kagent AI Agent → Investigation → R
 
 ### Prerequisites
 
-- Kubernetes 1.28+ (K3s for local development)
-- Prometheus + AlertManager configured
-- Kagent operator installed
-- Helm 3.x
-- Docker / Podman
-- Gmail account with app password (for notifications)
+**Required:**
+- **Kubernetes**: v1.28+ (K3s 1.28+ recommended for local development)
+- **Kagent Operator**: Latest version from [kagent.dev](https://kagent.dev/) (see [installation guide](docs/KAGENT_INSTALLATION.md))
+- **Anthropic API Key**: For Claude AI integration (obtain from [console.anthropic.com](https://console.anthropic.com/))
+- **Prometheus + AlertManager**: v2.45+ (via kube-prometheus-stack Helm chart)
+- **Helm**: v3.12+
+- **kubectl**: v1.28+
+- **Docker or Podman**: v24.0+ (for building images)
+- **Gmail Account**: With app password enabled (2FA required)
+
+**Optional:**
+- **GitHub Personal Access Token**: For commit/workflow correlation (read-only scope)
+- **Grafana**: v10.0+ for visualization (included in kube-prometheus-stack)
+
+**System Resources:**
+- Minimum: 4 vCPU, 8GB RAM, 20GB storage
+- Recommended: 8 vCPU, 16GB RAM, 50GB storage
 
 ### Installation
 
-```bash
-# 1. Clone repository
-git clone <your-repo>
-cd analysis-agent
+**Complete step-by-step installation guide: [docs/INSTALLATION.md](docs/INSTALLATION.md)**
 
-# 2. Install Kagent operator (see docs/KAGENT_INSTALLATION.md)
+The installation guide covers:
+- ✅ Prerequisites (Kagent operator, API keys, tools)
+- ✅ Building Docker images
+- ✅ Configuring secrets
+- ✅ Deployment (Helm or manual)
+- ✅ Verification steps
+- ✅ Troubleshooting
 
-# 3. Create namespace and resources
-kubectl create namespace analysis-agent
-kubectl apply -f manifests/namespace.yaml
-kubectl apply -f manifests/rbac.yaml
-kubectl apply -f manifests/storage.yaml
+**Quick Start Overview:**
 
-# 4. Initialize agent memory
-./scripts/init-memory.sh
+1. **Prerequisites**: Verify tools, get API keys → [Full Prerequisites](docs/INSTALLATION.md#prerequisites)
+2. **Install Kagent**: Deploy operator with Claude → [Step 1](docs/INSTALLATION.md#step-1-install-kagent-operator)
+3. **Configure Secrets**: Gmail, recipients → [Step 2](docs/INSTALLATION.md#step-2-configure-secrets)
+4. **Deploy with Helm**: Single helm install command (uses pre-built images) → [Step 3](docs/INSTALLATION.md#step-3-deploy-application)
+5. **Verify Installation**: Test all components → [Step 4](docs/INSTALLATION.md#step-4-verify-installation)
+6. **Configure AlertManager**: Enable real alerts → [Step 5](docs/INSTALLATION.md#step-5-configure-alertmanager) ⚠️ **Required**
 
-# 5. Configure Gmail credentials
-# Edit manifests/secrets.yaml with your credentials
-kubectl apply -f manifests/secrets.yaml
+**→ [Complete Installation Guide with Commands & Troubleshooting](docs/INSTALLATION.md)** ⭐
 
-# 6. Build and deploy services
-cd services/webhook
-docker build -t your-dockerhub/analysis-agent-webhook:v0.1.0 .
-docker push your-dockerhub/analysis-agent-webhook:v0.1.0
-
-cd ../notifier
-docker build -t your-dockerhub/analysis-agent-notifier:v0.1.0 .
-docker push your-dockerhub/analysis-agent-notifier:v0.1.0
-
-# 7. Deploy all components
-kubectl apply -f manifests/deployments/
-
-# 8. Configure AlertManager
-kubectl apply -f manifests/alertmanager-config.yaml -n monitoring
-kubectl rollout restart statefulset/alertmanager-prometheus-kube-prometheus-alertmanager -n monitoring
-
-# 9. Verify installation
-./tests/verify-agent.sh
-```
+**Note**: Pre-built Docker images are provided. No need to build yourself! See [Docker Build Guide](docs/DOCKER_BUILD.md) only if customizing services.
 
 ## Testing
 
@@ -162,6 +156,38 @@ Edit `manifests/secrets.yaml` to configure email recipients:
 recipients-critical: "oncall@example.com,sre@example.com"
 recipients-warning: "devops@example.com"
 recipients-info: "devops-alerts@example.com"
+```
+
+### GitHub Integration (Optional)
+
+To enable commit and workflow correlation, configure a GitHub Personal Access Token:
+
+**1. Generate Token:**
+```bash
+# Visit: https://github.com/settings/tokens
+# Create fine-grained token with:
+# - Repository access: Your repositories
+# - Permissions: Contents (Read-only), Actions (Read-only)
+```
+
+**2. Add to secrets.yaml:**
+```yaml
+github-credentials:
+  token: "ghp_your_token_here"
+```
+
+**3. Enable in agent:**
+Uncomment the GitHub tool in `agents/devops-rca-agent.yaml`:
+```yaml
+- name: github_tool
+  type: python
+  module: tools.github_api
+  function: github_tool
+```
+
+**4. Restart agent:**
+```bash
+kubectl rollout restart deployment/devops-rca-agent -n analysis-agent
 ```
 
 ### Agent Memory
@@ -218,14 +244,29 @@ Primary: Database connection string missing DB_PASSWORD environment variable
 
 ## Documentation
 
-Detailed documentation available in `/docs`:
+**Core Documentation:**
+- **[Installation Guide](docs/INSTALLATION.md)** - Complete setup from prerequisites to deployment ⭐
+- [Helm Deployment Guide](docs/HELM_DEPLOYMENT.md) - Advanced Helm patterns for production
+- [Image Architecture](docs/IMAGE_ARCHITECTURE.md) - Docker image separation of concerns
+- [Docker Build Guide](docs/DOCKER_BUILD.md) - For maintainers: building and publishing images
+- [Roadmap](docs/ROADMAP.md) - Future enhancements and features
+- [Development Plan](development_plan.md) - Detailed 6-phase implementation roadmap
+- [CLAUDE.md](CLAUDE.md) - Architecture details and development guide
 
-- [Prerequisites](docs/PREREQUISITES.md) - Required tools and setup
-- [Kagent Installation](docs/KAGENT_INSTALLATION.md) - Install Kagent operator
-- [GitHub API Setup](docs/GITHUB_API_SETUP.md) - Configure GitHub integration
-- [Gmail Setup](docs/GMAIL_SETUP.md) - Configure email notifications
-- [Testing Strategy](docs/TESTING_STRATEGY.md) - Testing approach
-- [Future Enhancements](docs/FUTURE_MCP.md) - MCP integration plans
+**Service Documentation:**
+- [Webhook Service](services/webhook/README.md) - AlertManager webhook receiver
+- [Notifier Service](services/notifier/README.md) - Email notification service
+
+**Testing Documentation:**
+- [Testing Guide](tests/README.md) - Comprehensive testing scenarios and scripts
+- [Verification Script](tests/verify-agent.sh) - System health check
+- [Test Failure Creator](tests/create-test-failure.sh) - Deploy failure scenarios
+- [Send Test Alert](tests/send-test-alert.sh) - Manual alert injection
+
+**Example Scenarios:**
+- [CrashLoop Scenario](examples/crashloop-scenario/README.md) - Database connection failure
+- [OOMKilled Scenario](examples/oom-scenario/README.md) - Memory exhaustion
+- [ImagePull Scenario](examples/imagepull-scenario/README.md) - Invalid image tag
 
 ## Development Plan
 
@@ -247,13 +288,24 @@ analysis-agent/
 │   ├── helm_analyzer.py
 │   ├── log_analyzer.py
 │   └── github_api.py
-├── manifests/                     # Kubernetes manifests
+├── chart/                         # Helm chart for deployment
+│   └── analysis-agent/            # Main Helm chart
+│       ├── Chart.yaml
+│       ├── values.yaml
+│       ├── templates/
+│       └── README.md
+├── manifests/                     # Kubernetes manifests (manual deployment)
 │   ├── namespace.yaml
 │   ├── rbac.yaml
 │   ├── storage.yaml
 │   └── deployments/
 ├── memory-templates/              # Agent memory templates
 ├── docs/                          # Documentation
+│   ├── INSTALLATION.md            # Complete installation guide ⭐
+│   ├── HELM_DEPLOYMENT.md         # Advanced Helm deployment guide
+│   ├── IMAGE_ARCHITECTURE.md      # Docker image separation of concerns
+│   ├── DOCKER_BUILD.md            # Docker build guide (for maintainers)
+│   └── ROADMAP.md                 # Future enhancements roadmap
 ├── tests/                         # Test scenarios and scripts
 └── examples/                      # Example failure scenarios
 ```
