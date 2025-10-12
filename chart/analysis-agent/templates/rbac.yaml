@@ -1,0 +1,70 @@
+{{- if .Values.rbac.create -}}
+---
+# ServiceAccount for Webhook Service
+{{- if .Values.rbac.serviceAccounts.webhook.create }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "analysis-agent.webhook.serviceAccountName" . }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "analysis-agent.webhook.labels" . | nindent 4 }}
+{{- end }}
+
+---
+# ServiceAccount for Notifier Service
+{{- if .Values.rbac.serviceAccounts.notifier.create }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "analysis-agent.notifier.serviceAccountName" . }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "analysis-agent.notifier.labels" . | nindent 4 }}
+{{- end }}
+
+---
+# ServiceAccount for Agent
+{{- if .Values.rbac.serviceAccounts.agent.create }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "analysis-agent.agent.serviceAccountName" . }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "analysis-agent.agent.labels" . | nindent 4 }}
+{{- end }}
+
+---
+# ClusterRole for Agent (read-only access to cluster resources)
+{{- if .Values.rbac.clusterRole.create }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Values.rbac.clusterRole.name }}
+  labels:
+    {{- include "analysis-agent.agent.labels" . | nindent 4 }}
+rules:
+{{- toYaml .Values.rbac.clusterRole.rules | nindent 2 }}
+{{- end }}
+
+---
+# ClusterRoleBinding for Agent
+{{- if .Values.rbac.clusterRole.create }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Values.rbac.clusterRole.name }}-binding
+  labels:
+    {{- include "analysis-agent.agent.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Values.rbac.clusterRole.name }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "analysis-agent.agent.serviceAccountName" . }}
+    namespace: {{ .Values.global.namespace }}
+{{- end }}
+
+{{- end }}

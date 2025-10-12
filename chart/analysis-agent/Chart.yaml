@@ -1,0 +1,22 @@
+apiVersion: v2
+name: analysis-agent
+description: AI-powered Root Cause Analysis agent for Kubernetes using Kagent framework
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - kubernetes
+  - ai
+  - rca
+  - devops
+  - kagent
+  - claude
+  - alertmanager
+  - monitoring
+home: https://github.com/your-org/analysis-agent
+sources:
+  - https://github.com/your-org/analysis-agent
+maintainers:
+  - name: DevOps Team
+    email: devops@example.com
+dependencies: []

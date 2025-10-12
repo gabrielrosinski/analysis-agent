@@ -262,7 +262,7 @@ else
     echo "1. Missing manifests - Apply all manifests:"
     echo -e "   ${YELLOW}kubectl apply -f manifests/${NC}"
     echo ""
-    echo "2. Kagent operator not installed - See docs/KAGENT_INSTALLATION.md"
+    echo "2. Kagent operator not installed - See docs/INSTALLATION.md"
     echo ""
     echo "3. Services not ready - Check pod logs:"
     echo -e "   ${YELLOW}kubectl logs -n $NAMESPACE -l app=devops-rca${NC}"

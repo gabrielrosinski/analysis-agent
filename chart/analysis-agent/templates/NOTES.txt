@@ -1,0 +1,145 @@
+============================================================
+  DevOps RCA Agent - Installation Complete!
+============================================================
+
+Thank you for installing {{ .Chart.Name }}.
+
+Your release is named: {{ .Release.Name }}
+Namespace: {{ .Values.global.namespace }}
+
+============================================================
+  Components Installed
+============================================================
+
+{{- if .Values.webhook.enabled }}
+✓ Webhook Service: {{ .Values.webhook.replicaCount }} replicas
+{{- end }}
+
+{{- if .Values.notifier.enabled }}
+✓ Notifier Service: {{ .Values.notifier.replicaCount }} replicas
+{{- end }}
+
+{{- if .Values.agent.enabled }}
+✓ Kagent AI Agent: {{ .Values.agent.name }}
+{{- end }}
+
+{{- if .Values.storage.enabled }}
+✓ Persistent Storage: {{ .Values.storage.pvc.size }} PVC
+{{- end }}
+
+{{- if .Values.rbac.create }}
+✓ RBAC: ServiceAccounts, ClusterRole, ClusterRoleBinding
+{{- end }}
+
+============================================================
+  Next Steps
+============================================================
+
+1. Verify all pods are running:
+   kubectl get pods -n {{ .Values.global.namespace }}
+
+2. Check webhook service:
+   kubectl get svc webhook-service -n {{ .Values.global.namespace }}
+
+3. Check agent status:
+   kubectl get agent {{ .Values.agent.name }} -n {{ .Values.global.namespace }}
+
+4. Initialize agent memory (if not done):
+   kubectl exec -it -n {{ .Values.global.namespace }} \
+     $(kubectl get pod -n {{ .Values.global.namespace }} -l component=agent -o jsonpath='{.items[0].metadata.name}') \
+     -- ls -la /agent-memory/
+
+{{- if not .Values.secrets.create }}
+
+⚠️  IMPORTANT: Secrets Not Created
+-----------------------------------
+You need to manually create the required secrets:
+
+1. Gmail credentials:
+   kubectl create secret generic gmail-credentials \
+     -n {{ .Values.global.namespace }} \
+     --from-literal=username="your-email@gmail.com" \
+     --from-literal=password="your-app-password" \
+     --from-literal=from-address="DevOps RCA Agent <your-email@gmail.com>"
+
+2. Email recipients:
+   kubectl create secret generic email-recipients \
+     -n {{ .Values.global.namespace }} \
+     --from-literal=recipients-critical="oncall@example.com" \
+     --from-literal=recipients-warning="devops@example.com" \
+     --from-literal=recipients-info="devops-alerts@example.com"
+
+{{- end }}
+
+{{- if .Values.alertmanager.enabled }}
+
+5. Configure AlertManager (already applied):
+   kubectl get configmap alertmanager-config -n {{ .Values.alertmanager.namespace }}
+{{- else }}
+
+5. Configure AlertManager integration:
+   See: https://github.com/your-org/analysis-agent/blob/main/docs/INSTALLATION.md
+{{- end }}
+
+============================================================
+  Testing
+============================================================
+
+Send a test alert:
+  kubectl port-forward -n {{ .Values.global.namespace }} svc/webhook-service 8080:8080
+  curl -X POST http://localhost:8080/api/v1/webhook/test \
+    -H "Content-Type: application/json" \
+    -d '{"alertname": "TestAlert", "severity": "warning"}'
+
+Monitor logs:
+  # Webhook
+  kubectl logs -f -n {{ .Values.global.namespace }} -l app=webhook-service
+
+  # Notifier
+  kubectl logs -f -n {{ .Values.global.namespace }} -l app=notifier-service
+
+  # Agent (via Kagent controller)
+  kubectl logs -f -n {{ .Values.kagent.namespace }} -l app.kubernetes.io/name=kagent-controller
+
+============================================================
+  Troubleshooting
+============================================================
+
+View agent details:
+  kubectl describe agent {{ .Values.agent.name }} -n {{ .Values.global.namespace }}
+
+Check RBAC permissions:
+  kubectl auth can-i list pods \
+    --as=system:serviceaccount:{{ .Values.global.namespace }}:{{ include "analysis-agent.agent.serviceAccountName" . }} \
+    --all-namespaces
+
+Access Kagent dashboard:
+  kubectl port-forward -n {{ .Values.kagent.namespace }} svc/kagent-ui 8082:8082
+  # Open: http://localhost:8082
+
+============================================================
+  Documentation
+============================================================
+
+- Installation Guide: docs/INSTALLATION.md
+- Testing Guide: tests/README.md
+- Architecture: CLAUDE.md
+- Full Documentation: README.md
+
+Report issues: https://github.com/your-org/analysis-agent/issues
+
+============================================================
+  Configuration
+============================================================
+
+Helm Values Used:
+- Webhook Image: {{ .Values.webhook.image.repository }}:{{ .Values.webhook.image.tag }}
+- Notifier Image: {{ .Values.notifier.image.repository }}:{{ .Values.notifier.image.tag }}
+- Agent Model: {{ .Values.kagent.modelConfig }}
+- Storage Class: {{ .Values.storage.pvc.storageClassName | default "default" }}
+
+To customize, see: values.yaml or use --set flags
+
+============================================================
+
+Happy DevOps! 🚀

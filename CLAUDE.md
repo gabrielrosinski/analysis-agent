@@ -39,7 +39,7 @@ curl -sfL https://get.k3s.io | sh -
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm install prometheus prometheus-community/kube-prometheus-stack -n monitoring --create-namespace
 
-# Install Kagent operator (see docs/KAGENT_INSTALLATION.md)
+# Install Kagent operator (see docs/INSTALLATION.md#step-1-install-kagent-operator)
 ```
 
 ### Building Docker Images
