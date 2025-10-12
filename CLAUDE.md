@@ -43,16 +43,19 @@ helm install prometheus prometheus-community/kube-prometheus-stack -n monitoring
 ```
 
 ### Building Docker Images
-```bash
-# Webhook service
-cd services/webhook
-docker build -t your-dockerhub/analysis-agent-webhook:v0.1.0 .
-docker push your-dockerhub/analysis-agent-webhook:v0.1.0
 
-# Notifier service
-cd services/notifier
-docker build -t your-dockerhub/analysis-agent-notifier:v0.1.0 .
-docker push your-dockerhub/analysis-agent-notifier:v0.1.0
+**For Maintainers Only**: See **[docs/DOCKER_BUILD.md](docs/DOCKER_BUILD.md)** for complete build and publish instructions.
+
+**For End Users**: Pre-built images are available at `ghcr.io/your-org/analysis-agent-*:0.1.0`. Use Helm chart defaults - no build required!
+
+**Quick Reference** (Maintainers):
+```bash
+# Build and publish to GHCR (see DOCKER_BUILD.md for details)
+docker build -t ghcr.io/your-org/analysis-agent-webhook:0.1.0 services/webhook
+docker push ghcr.io/your-org/analysis-agent-webhook:0.1.0
+
+docker build -t ghcr.io/your-org/analysis-agent-notifier:0.1.0 services/notifier
+docker push ghcr.io/your-org/analysis-agent-notifier:0.1.0
 ```
 
 ### Deployment
@@ -237,17 +240,35 @@ Recipients configured via `manifests/secrets.yaml` (comma-separated).
 
 ## Phase-Based Development
 
-The project follows a 6-phase development plan (see `development_plan.md`):
+The project follows a 6-phase development plan (see `development/development_plan.md`):
 
 - **Phase 0**: Project setup, prerequisites, K3s
 - **Phase 1**: Foundation (namespace, RBAC, storage, basic agent)
-- **Phase 2**: Webhook service + AlertManager integration
+- **Phase 2**: Webhook service + AlertManager integration ✅ **Complete**
 - **Phase 3**: Agent intelligence + custom tools
 - **Phase 4**: Notifier service + email
 - **Phase 5**: Testing & refinement
 - **Phase 6**: Future enhancements (MCP servers)
 
-**Current Status**: MVP Development (Phases 0-5)
+**Current Status**: MVP Development - Phase 2 Complete (Documentation Simplification)
+
+## Recent Updates (Phase 2 - October 2025)
+
+### Documentation Simplification
+- **Removed Docker build requirement** for end users
+- **Pre-built images** now available at `ghcr.io/your-org/analysis-agent-*`
+- Installation reduced from 7 steps to 6 steps (~15-20 minutes saved)
+
+### New Documentation
+- **[docs/DOCKER_BUILD.md](docs/DOCKER_BUILD.md)** - Maintainer guide for building/publishing images
+- **[docs/IMAGE_ARCHITECTURE.md](docs/IMAGE_ARCHITECTURE.md)** - Separation of concerns for Docker images
+- **[docs/ROADMAP.md](docs/ROADMAP.md)** - Future features roadmap (v0.2.0 to v0.6.0)
+
+### Development Folder Reorganization
+All planning documents moved to `development/` directory:
+- `development/development_plan.md` - Overall 6-phase implementation roadmap
+- `development/development_phase2.md` - Phase 2 detailed summary (31KB reference)
+- `development/continue_prompt.md` - Concise prompt for continuing development in new sessions
 
 ## Key Implementation Notes
 

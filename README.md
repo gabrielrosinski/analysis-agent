@@ -97,12 +97,11 @@ Prometheus Alert → Webhook Service → Kagent AI Agent → Investigation → R
 
 **Required:**
 - **Kubernetes**: v1.28+ (K3s 1.28+ recommended for local development)
-- **Kagent Operator**: Latest version from [kagent.dev](https://kagent.dev/) (see [installation guide](docs/KAGENT_INSTALLATION.md))
+- **Kagent Operator**: Latest version from [kagent.dev](https://kagent.dev/) (see [installation guide](docs/INSTALLATION.md#step-1-install-kagent-operator))
 - **Anthropic API Key**: For Claude AI integration (obtain from [console.anthropic.com](https://console.anthropic.com/))
 - **Prometheus + AlertManager**: v2.45+ (via kube-prometheus-stack Helm chart)
 - **Helm**: v3.12+
 - **kubectl**: v1.28+
-- **Docker or Podman**: v24.0+ (for building images)
 - **Gmail Account**: With app password enabled (2FA required)
 
 **Optional:**
@@ -119,7 +118,6 @@ Prometheus Alert → Webhook Service → Kagent AI Agent → Investigation → R
 
 The installation guide covers:
 - ✅ Prerequisites (Kagent operator, API keys, tools)
-- ✅ Building Docker images
 - ✅ Configuring secrets
 - ✅ Deployment (Helm or manual)
 - ✅ Verification steps
@@ -267,7 +265,7 @@ Primary: Database connection string missing DB_PASSWORD environment variable
 - [Image Architecture](docs/IMAGE_ARCHITECTURE.md) - Docker image separation of concerns
 - [Docker Build Guide](docs/DOCKER_BUILD.md) - For maintainers: building and publishing images
 - [Roadmap](docs/ROADMAP.md) - Future enhancements and features
-- [Development Plan](development_plan.md) - Detailed 6-phase implementation roadmap
+- [Development Plan](development/development_plan.md) - Detailed 6-phase implementation roadmap
 - [CLAUDE.md](CLAUDE.md) - Architecture details and development guide
 
 **Service Documentation:**
@@ -287,14 +285,14 @@ Primary: Database connection string missing DB_PASSWORD environment variable
 
 ## Development Plan
 
-See [development_plan.md](development_plan.md) for detailed implementation phases.
+See [development/development_plan.md](development/development_plan.md) for detailed implementation phases.
 
 ## Project Structure
 
 ```
 analysis-agent/
 ├── README.md                      # This file
-├── development_plan.md            # Detailed implementation plan
+├── CLAUDE.md                      # Architecture details and development guide
 ├── agents/                        # Kagent agent definitions
 │   └── devops-rca-agent.yaml
 ├── services/                      # Python microservices
@@ -323,6 +321,10 @@ analysis-agent/
 │   ├── IMAGE_ARCHITECTURE.md      # Docker image separation of concerns
 │   ├── DOCKER_BUILD.md            # Docker build guide (for maintainers)
 │   └── ROADMAP.md                 # Future enhancements roadmap
+├── development/                   # Development planning documents
+│   ├── development_plan.md        # Overall 6-phase implementation roadmap
+│   ├── development_phase2.md      # Phase 2 detailed summary
+│   └── continue_prompt.md         # Prompt for continuing development
 ├── tests/                         # Test scenarios and scripts
 └── examples/                      # Example failure scenarios
 ```
@@ -358,7 +360,7 @@ This is a learning project focused on Kagent development. Contributions welcome!
 
 For issues and questions:
 - Check [documentation](docs/)
-- Review [development plan](development_plan.md)
+- Review [development plan](development/development_plan.md)
 - Create an issue in the repository
 
 ## License
