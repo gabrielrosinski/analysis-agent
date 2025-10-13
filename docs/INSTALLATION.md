@@ -77,6 +77,8 @@ kubectl get crd | grep kagent
 
 ### 1.2 Configure Anthropic API Key
 
+**Note:** This manual step is shown for transparency. In Step 2, you can use the automated script that creates all secrets including this one. See [Local Secrets Guide](./security/local-secrets.md) for the automated approach.
+
 ```bash
 # Set your API key
 export ANTHROPIC_API_KEY="sk-ant-api-YOUR-ACTUAL-KEY"
@@ -131,11 +133,65 @@ kubectl get modelconfig -n kagent
 
 ## Step 2: Configure Secrets
 
-**Note**: Pre-built Docker images are provided. You do NOT need to build images yourself unless you're modifying the webhook/notifier services. See [Docker Build Guide](./DOCKER_BUILD.md) only if you need custom builds.
+**Pre-built Images**: Docker images are provided at Docker Hub. You do NOT need to build images yourself unless modifying services. See [Docker Build Guide](./DOCKER_BUILD.md) only if needed.
 
-Create secrets for Gmail and email recipients.
+**Security Approach:**
 
-### 2.1 Gmail Credentials
+This step shows TWO approaches for managing secrets:
+
+- **Development/Testing (Local K8s Secrets)**: ✅ Quick setup for testing
+  - Base64-encoded Kubernetes secrets (NOT encrypted)
+  - Automated setup script for convenience
+  - **→ See [Local Secrets Guide](./security/local-secrets.md)**
+
+- **Production (HashiCorp Vault)**: 🔒 Enterprise-grade security
+  - Encrypted storage with access control
+  - Dynamic secrets and automatic rotation
+  - Vault Community Edition is FREE and open-source
+  - **→ See [Vault Production Guide](./security/vault-guide.md)**
+
+**Choose your approach below:**
+
+---
+
+### Option A: Automated Setup (Recommended)
+
+**Easiest way** - Use the provided script to create all secrets from a local config file:
+
+```bash
+# 1. Create your local environment file (gitignored, safe)
+cp .env.template .env.local
+
+# 2. Edit with your actual credentials
+nano .env.local  # or use your preferred editor
+
+# Fill in:
+#   - ANTHROPIC_API_KEY (from https://console.anthropic.com/)
+#   - GMAIL_USERNAME and GMAIL_APP_PASSWORD
+#   - RECIPIENTS_* (email addresses for notifications)
+#   - GITHUB_TOKEN (optional)
+
+# 3. Run the setup script to create all secrets
+./scripts/setup-local-secrets.sh
+```
+
+**Done!** The script automatically creates all required secrets in your cluster.
+
+**What the script creates:**
+- `kagent-anthropic` secret in `kagent` namespace
+- `gmail-credentials` secret in `analysis-agent` namespace
+- `email-recipients` secret in `analysis-agent` namespace
+- `github-credentials` secret (if GitHub token provided)
+
+**Safety:** `.env.local` is gitignored and never committed to the repository.
+
+---
+
+### Option B: Manual Secret Creation
+
+If you prefer to create secrets manually:
+
+#### 2.1 Gmail Credentials
 
 ```bash
 kubectl create secret generic gmail-credentials \
@@ -145,7 +201,7 @@ kubectl create secret generic gmail-credentials \
   --from-literal=from-address="DevOps RCA Agent <your-email@gmail.com>"
 ```
 
-### 2.2 Email Recipients
+#### 2.2 Email Recipients
 
 ```bash
 kubectl create secret generic email-recipients \
@@ -157,7 +213,7 @@ kubectl create secret generic email-recipients \
 
 **Replace with your actual email addresses!**
 
-### 2.3 GitHub Token (Optional)
+#### 2.3 GitHub Token (Optional)
 
 For GitHub integration (commit correlation):
 
@@ -452,10 +508,10 @@ After successful installation:
    ```
 
 4. **Production Deployment**
-   - See [Helm Deployment Guide](./HELM_DEPLOYMENT.md) for production patterns
-   - Configure external secrets management
-   - Set up monitoring and alerting
-   - Implement backup strategy
+   - **Security**: Migrate to [HashiCorp Vault](./security/vault-guide.md) for production secret management
+   - **Deployment**: See [Helm Deployment Guide](./HELM_DEPLOYMENT.md) for production patterns
+   - **Monitoring**: Set up monitoring and alerting for the agent
+   - **Backup**: Implement backup strategy for agent memory and reports
 
 ---
 
@@ -496,9 +552,14 @@ kubectl delete namespace kagent
 
 ## Support
 
-- **Documentation**: [README.md](../README.md)
-- **Helm Guide**: [HELM_DEPLOYMENT.md](./HELM_DEPLOYMENT.md)
-- **Issues**: Create an issue in the repository
+**Documentation:**
+- [README.md](../README.md) - Project overview
+- [Helm Deployment Guide](./HELM_DEPLOYMENT.md) - Production deployment patterns
+- [Local Secrets Guide](./security/local-secrets.md) - Development secret management
+- [Vault Production Guide](./security/vault-guide.md) - Production secret management
+
+**Help:**
+- Create an issue in the repository for bugs or questions
 
 ---
 

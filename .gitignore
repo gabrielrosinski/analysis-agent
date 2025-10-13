@@ -38,13 +38,37 @@ Thumbs.db
 # Kubernetes secrets (DO NOT COMMIT)
 manifests/secrets.yaml
 *-credentials.yaml
+*-secrets.yaml
 *.key
 *.pem
+*.crt
+*.token
 
-# Local development
+# Local development & API keys
 .env
 .env.local
+.env.production
 *.log
+*-api-key.txt
+*-token.txt
+api-keys/
+secrets/
+
+# Vault initialization (DO NOT COMMIT)
+vault-init.json
+.vault-token
+*.vault-token
+
+# Sensitive config files (NOT in docs/ or scripts/ - those are code/documentation)
+*secret*
+*password*
+*apikey*
+*private*
+# Exceptions: templates, documentation, and utility scripts
+!manifests/secrets.yaml.template
+!docs/security/*.md
+!docs/**/*.md
+!scripts/*.sh
 
 # Docker
 *.tar
