@@ -278,6 +278,39 @@ curl -X POST http://localhost:8081/api/v1/test-email \
 # Check logs: kubectl logs -f -n analysis-agent -l app=webhook-service
 ```
 
+### 4.6 Access Kagent Dashboard (UI)
+
+The Kagent operator includes a web-based dashboard for monitoring and interacting with your agents.
+
+```bash
+# Port forward to Kagent UI service
+kubectl port-forward -n kagent svc/kagent-ui 8082:8082
+```
+
+Open your browser to: **http://localhost:8082**
+
+**Dashboard Features:**
+
+- **Agent Overview**: View all deployed agents (including your `devops-rca-agent`)
+- **Chat Interface**: Interact directly with agents for testing
+- **Tool Inspection**: See available tools and their configurations
+- **Execution History**: Review past agent investigations and responses
+- **Configuration Review**: Verify agent settings and model configurations
+
+**Using the Dashboard:**
+
+1. **View Your Agent**: Navigate to the agents list and click on `devops-rca-agent` (from `analysis-agent` namespace)
+2. **Test Agent Chat**: Send test queries like "What tools do you have available?" or "Check the cluster health"
+3. **Review Tool Output**: Expand "Arguments" and "Results" sections to see tool executions
+4. **Monitor Investigations**: View real-time updates when AlertManager triggers investigations
+
+**Tips:**
+
+- The dashboard shows agents from ALL namespaces (both `kagent` and `analysis-agent`)
+- Use the "New Chat" button to start fresh conversations with your agent
+- The UI automatically refreshes when new agent sessions start
+- For production, consider setting up ingress instead of port-forward (see [Helm Deployment Guide](./HELM_DEPLOYMENT.md))
+
 ---
 
 ## Step 5: Configure AlertManager
@@ -400,7 +433,7 @@ After successful installation:
    # Watch all logs
    kubectl logs -f -n analysis-agent --all-containers=true
 
-   # Access Kagent dashboard
+   # Access Kagent dashboard (see Step 4.6 for full details)
    kubectl port-forward -n kagent svc/kagent-ui 8082:8082
    # Open: http://localhost:8082
    ```

@@ -19,10 +19,10 @@ webhook:
   enabled: true
   replicaCount: 2
   image:
-    # Pre-built image from GitHub Container Registry
+    # Pre-built image from Docker Hub
     # Default: Uses published image - no need to build yourself!
     # Override: Use --set webhook.image.repository=your-registry/webhook
-    repository: ghcr.io/your-org/analysis-agent-webhook
+    repository: blaqr/analysis-agent-webhook
     tag: "0.1.0"
     pullPolicy: IfNotPresent
   service:
@@ -49,10 +49,10 @@ notifier:
   enabled: true
   replicaCount: 2
   image:
-    # Pre-built image from GitHub Container Registry
+    # Pre-built image from Docker Hub
     # Default: Uses published image - no need to build yourself!
     # Override: Use --set notifier.image.repository=your-registry/notifier
-    repository: ghcr.io/your-org/analysis-agent-notifier
+    repository: blaqr/analysis-agent-notifier
     tag: "0.1.0"
     pullPolicy: IfNotPresent
   service:

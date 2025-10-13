@@ -439,15 +439,6 @@ curl -X POST http://localhost:8080/api/v1/test-email \
   -d '["your-email@example.com"]'
 ```
 
-## Acknowledgments
-
-- Built with [Kagent](https://kagent.dev/)
-- Prometheus & AlertManager for monitoring
-- FastAPI for microservices
-- The Kubernetes community
-
----
-
 **Status**: MVP Development Phase
 
 **Current Version**: 0.1.0

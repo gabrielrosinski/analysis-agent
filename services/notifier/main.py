@@ -12,6 +12,7 @@ from email.mime.multipart import MIMEMultipart
 from typing import List, Optional
 from datetime import datetime
 import logging
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
@@ -65,6 +66,37 @@ RECIPIENTS_CRITICAL = [r.strip() for r in RECIPIENTS_CRITICAL if r.strip()]
 RECIPIENTS_WARNING = [r.strip() for r in RECIPIENTS_WARNING if r.strip()]
 RECIPIENTS_INFO = [r.strip() for r in RECIPIENTS_INFO if r.strip()]
 
+# Template loading
+TEMPLATE_DIR = Path(__file__).parent / "templates"
+EMAIL_TEMPLATE_PATH = TEMPLATE_DIR / "email_template.html"
+
+def load_email_template() -> str:
+    """
+    Load email HTML template from file.
+
+    Returns:
+        HTML template string with {content} placeholder
+    """
+    try:
+        with open(EMAIL_TEMPLATE_PATH, 'r', encoding='utf-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        logger.error(f"Email template not found at {EMAIL_TEMPLATE_PATH}")
+        raise
+    except Exception as e:
+        logger.error(f"Failed to load email template: {e}")
+        raise
+
+# Load template at startup
+try:
+    EMAIL_TEMPLATE = load_email_template()
+    logger.info(f"Email template loaded successfully from {EMAIL_TEMPLATE_PATH}")
+except Exception as e:
+    logger.warning(f"Failed to load email template: {e}. Using fallback inline template.")
+    # Fallback inline template (minimal)
+    EMAIL_TEMPLATE = """<!DOCTYPE html>
+<html><body><div>{content}</div></body></html>"""
+
 
 def get_recipients_for_severity(severity: str) -> List[str]:
     """
@@ -91,7 +123,7 @@ def get_recipients_for_severity(severity: str) -> List[str]:
 
 def markdown_to_html(markdown_text: str) -> str:
     """
-    Convert markdown to styled HTML for email.
+    Convert markdown to styled HTML for email using external template.
 
     Args:
         markdown_text: Markdown content
@@ -105,140 +137,9 @@ def markdown_to_html(markdown_text: str) -> str:
         extensions=['fenced_code', 'tables', 'nl2br']
     )
 
-    # Wrap in styled HTML template
-    styled_html = f"""
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Incident Report</title>
-    <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }}
-        .container {{
-            background-color: #ffffff;
-            border-radius: 8px;
-            padding: 30px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }}
-        h1 {{
-            color: #d32f2f;
-            border-bottom: 3px solid #d32f2f;
-            padding-bottom: 10px;
-            margin-top: 0;
-        }}
-        h2 {{
-            color: #1976d2;
-            border-bottom: 2px solid #1976d2;
-            padding-bottom: 8px;
-            margin-top: 30px;
-        }}
-        h3 {{
-            color: #388e3c;
-            margin-top: 20px;
-        }}
-        hr {{
-            border: none;
-            border-top: 2px solid #e0e0e0;
-            margin: 30px 0;
-        }}
-        code {{
-            background-color: #f5f5f5;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 0.9em;
-            color: #d32f2f;
-        }}
-        pre {{
-            background-color: #263238;
-            color: #aed581;
-            padding: 16px;
-            border-radius: 6px;
-            overflow-x: auto;
-            border-left: 4px solid #1976d2;
-        }}
-        pre code {{
-            background-color: transparent;
-            color: #aed581;
-            padding: 0;
-        }}
-        ul, ol {{
-            padding-left: 25px;
-        }}
-        li {{
-            margin-bottom: 8px;
-        }}
-        strong {{
-            color: #1976d2;
-        }}
-        table {{
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-        }}
-        th, td {{
-            border: 1px solid #e0e0e0;
-            padding: 12px;
-            text-align: left;
-        }}
-        th {{
-            background-color: #1976d2;
-            color: white;
-            font-weight: 600;
-        }}
-        tr:nth-child(even) {{
-            background-color: #f5f5f5;
-        }}
-        .severity-badge {{
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 0.85em;
-            text-transform: uppercase;
-        }}
-        .severity-critical {{
-            background-color: #d32f2f;
-            color: white;
-        }}
-        .severity-warning {{
-            background-color: #f57c00;
-            color: white;
-        }}
-        .severity-info {{
-            background-color: #1976d2;
-            color: white;
-        }}
-        .footer {{
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 2px solid #e0e0e0;
-            text-align: center;
-            color: #757575;
-            font-size: 0.9em;
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        {html_content}
-        <div class="footer">
-            <p>Generated by DevOps RCA Agent | Kagent Framework</p>
-            <p>This is an automated incident report. Do not reply to this email.</p>
-        </div>
-    </div>
-</body>
-</html>
-"""
+    # Inject content into template
+    styled_html = EMAIL_TEMPLATE.format(content=html_content)
+
     return styled_html
 
 
