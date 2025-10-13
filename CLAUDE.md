@@ -59,28 +59,29 @@ docker push ghcr.io/your-org/analysis-agent-notifier:0.1.0
 ```
 
 ### Deployment
+
+**Quick Start (Recommended):**
 ```bash
-# Create namespace and base resources
-kubectl create namespace analysis-agent
-kubectl apply -f manifests/namespace.yaml
-kubectl apply -f manifests/rbac.yaml
-kubectl apply -f manifests/storage.yaml
+# 1. Configure secrets with automated script
+cp .env.template .env.local
+nano .env.local  # Add your credentials
+./scripts/setup-local-secrets.sh
 
-# Initialize agent memory with templates
-./scripts/init-memory.sh
+# 2. Install Kagent operator
+helm install kagent-crds oci://ghcr.io/kagent-dev/kagent/helm/kagent-crds --namespace kagent --create-namespace
+helm install kagent oci://ghcr.io/kagent-dev/kagent/helm/kagent --namespace kagent \
+  --set providers.default=anthropic \
+  --set providers.anthropic.apiKeySecret=kagent-anthropic \
+  --set providers.anthropic.apiKeySecretKey=ANTHROPIC_API_KEY
 
-# Configure secrets
-cp manifests/secrets.yaml.template manifests/secrets.yaml
-# Edit manifests/secrets.yaml with your Gmail credentials
-kubectl apply -f manifests/secrets.yaml
+# 3. Configure Claude model
+kubectl apply -f manifests/kagent-modelconfig.yaml
 
-# Deploy services
-kubectl apply -f manifests/deployments/
-
-# Configure AlertManager to send webhooks
-kubectl apply -f manifests/alertmanager-config.yaml -n monitoring
-kubectl rollout restart statefulset/alertmanager-prometheus-kube-prometheus-alertmanager -n monitoring
+# 4. Deploy application with Helm
+helm install analysis-agent ./chart/analysis-agent --namespace analysis-agent --create-namespace
 ```
+
+**See [Installation Guide](docs/INSTALLATION.md) for complete step-by-step instructions.**
 
 ## Development Commands
 
@@ -432,14 +433,40 @@ Store incident reports in vector database for:
 - Pattern detection and trend analysis
 - Automated solution recommendations based on similar past issues
 
-## Gmail Configuration
+## Secret Management
 
-**Required**: Gmail app password (not account password)
+### Development/Testing (Local K8s Secrets)
 
-Steps:
-1. Enable 2FA on Gmail account
-2. Generate app password: https://myaccount.google.com/apppasswords
-3. Store in `manifests/secrets.yaml` under `smtp-password`
+**Automated Setup:**
+```bash
+cp .env.template .env.local
+nano .env.local  # Add credentials
+./scripts/setup-local-secrets.sh
+```
+
+The script creates all required secrets in Kubernetes. To update: edit `.env.local` and re-run the script.
+
+**See [Local Secrets Guide](docs/security/local-secrets.md) for details.**
+
+### Production (HashiCorp Vault)
+
+For production deployments, use Vault for:
+- Encrypted secret storage
+- Dynamic secrets with automatic rotation
+- Audit logging and access control
+
+**See [Vault Production Guide](docs/security/vault-guide.md) for setup instructions.**
+
+### Gmail Configuration
+
+**Required**: Gmail app password (not regular account password)
+
+1. Enable 2FA: https://myaccount.google.com/security
+2. Wait 5-10 minutes after enabling 2FA
+3. Generate app password: https://myaccount.google.com/apppasswords
+4. Add to `.env.local` as `GMAIL_APP_PASSWORD`
+
+**Troubleshooting**: If "App passwords" is not available, ensure 2FA is fully enabled and wait a few minutes.
 
 ## Quick Reference
 

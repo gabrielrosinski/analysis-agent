@@ -75,21 +75,7 @@ kubectl get crd | grep kagent
 # Should show: agents.kagent.dev, modelconfigs.kagent.dev, etc.
 ```
 
-### 1.2 Configure Anthropic API Key
-
-**Note:** This manual step is shown for transparency. In Step 2, you can use the automated script that creates all secrets including this one. See [Local Secrets Guide](./security/local-secrets.md) for the automated approach.
-
-```bash
-# Set your API key
-export ANTHROPIC_API_KEY="sk-ant-api-YOUR-ACTUAL-KEY"
-
-# Create secret
-kubectl create secret generic kagent-anthropic \
-    -n kagent \
-    --from-literal=ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY
-```
-
-### 1.3 Install Kagent Operator
+### 1.2 Install Kagent Operator
 
 ```bash
 helm install kagent oci://ghcr.io/kagent-dev/kagent/helm/kagent \
@@ -105,22 +91,10 @@ kubectl get pods -n kagent
 # Should show kagent-controller and kagent-ui pods running
 ```
 
-### 1.4 Create Claude Model Configuration
+### 1.3 Configure Claude Model
 
 ```bash
-cat <<EOF | kubectl apply -f -
-apiVersion: kagent.dev/v1alpha2
-kind: ModelConfig
-metadata:
-  name: claude-sonnet-config
-  namespace: kagent
-spec:
-  provider: Anthropic
-  model: claude-3-5-sonnet-20241022
-  apiKeySecret: kagent-anthropic
-  apiKeySecretKey: ANTHROPIC_API_KEY
-  anthropic: {}
-EOF
+kubectl apply -f manifests/kagent-modelconfig.yaml
 ```
 
 **Verify:**
@@ -154,9 +128,9 @@ This step shows TWO approaches for managing secrets:
 
 ---
 
-### Option A: Automated Setup (Recommended)
+### Automated Secret Setup
 
-**Easiest way** - Use the provided script to create all secrets from a local config file:
+Use the provided script to create all secrets from a local config file:
 
 ```bash
 # 1. Create your local environment file (gitignored, safe)
@@ -185,43 +159,7 @@ nano .env.local  # or use your preferred editor
 
 **Safety:** `.env.local` is gitignored and never committed to the repository.
 
----
-
-### Option B: Manual Secret Creation
-
-If you prefer to create secrets manually:
-
-#### 2.1 Gmail Credentials
-
-```bash
-kubectl create secret generic gmail-credentials \
-  -n analysis-agent \
-  --from-literal=username="your-email@gmail.com" \
-  --from-literal=password="your-16-char-app-password" \
-  --from-literal=from-address="DevOps RCA Agent <your-email@gmail.com>"
-```
-
-#### 2.2 Email Recipients
-
-```bash
-kubectl create secret generic email-recipients \
-  -n analysis-agent \
-  --from-literal=recipients-critical="oncall@example.com,sre@example.com" \
-  --from-literal=recipients-warning="devops@example.com" \
-  --from-literal=recipients-info="devops-alerts@example.com"
-```
-
-**Replace with your actual email addresses!**
-
-#### 2.3 GitHub Token (Optional)
-
-For GitHub integration (commit correlation):
-
-```bash
-kubectl create secret generic github-credentials \
-  -n analysis-agent \
-  --from-literal=token="ghp_your_github_token"
-```
+**To update secrets:** Simply edit `.env.local` and run `./scripts/setup-local-secrets.sh` again. The script is safe to re-run.
 
 ---
 
@@ -458,12 +396,22 @@ kubectl get secret gmail-credentials -n analysis-agent -o yaml
 
 # 2. Check notifier logs
 kubectl logs -n analysis-agent -l app=notifier-service --tail=50
-
-# 3. Verify Gmail app password
-# - Must be 16 characters (no spaces)
-# - 2FA must be enabled on Gmail account
-# - App password generated from: https://myaccount.google.com/apppasswords
 ```
+
+**Common Gmail Issues:**
+
+1. **"App passwords setting not available"**:
+   - Enable 2-Step Verification (2FA) first: https://myaccount.google.com/security
+   - Wait 5-10 minutes after enabling 2FA
+   - Then generate app password: https://myaccount.google.com/apppasswords
+
+2. **App password format**:
+   - Must be 16 characters (no spaces or dashes)
+   - Copy the password exactly as shown
+
+3. **Workspace/Organization accounts**:
+   - Admin may have disabled app passwords
+   - Contact your IT admin or use a personal Gmail account for testing
 
 ### Issue: Webhook Not Receiving Alerts
 

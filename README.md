@@ -163,47 +163,41 @@ kubectl logs -f -n kagent-system -l app=kagent-operator
 
 ## Configuration
 
+### Secret Management
+
+**Development/Testing (Automated Setup):**
+```bash
+# 1. Copy template and add your credentials
+cp .env.template .env.local
+nano .env.local  # Add API keys, Gmail credentials, recipients
+
+# 2. Run automated setup script
+./scripts/setup-local-secrets.sh
+```
+
+See [Local Secrets Guide](docs/security/local-secrets.md) for details.
+
+**Production (HashiCorp Vault):**
+Use Vault for encrypted secret storage with automatic rotation. See [Vault Production Guide](docs/security/vault-guide.md).
+
 ### Alert Routing
 
-Configure email recipients in `manifests/secrets.yaml`:
+Email recipients are configured in `.env.local` (or Vault for production):
 
-```yaml
-recipients-critical: "oncall@example.com,sre@example.com"
-recipients-warning: "devops@example.com"
-recipients-info: "devops-alerts@example.com"
+```bash
+RECIPIENTS_CRITICAL="oncall@example.com,sre@example.com"
+RECIPIENTS_WARNING="devops@example.com"
+RECIPIENTS_INFO="devops-alerts@example.com"
 ```
 
 ### GitHub Integration (Optional)
 
-To enable commit and workflow correlation, configure a GitHub Personal Access Token:
-
-**1. Generate Token:**
+Add GitHub token to `.env.local`:
 ```bash
-# Visit: https://github.com/settings/tokens
-# Create fine-grained token with:
-# - Repository access: Your repositories
-# - Permissions: Contents (Read-only), Actions (Read-only)
+GITHUB_TOKEN="ghp_your_token_here"
 ```
 
-**2. Add to secrets.yaml:**
-```yaml
-github-credentials:
-  token: "ghp_your_token_here"
-```
-
-**3. Enable in agent:**
-Uncomment the GitHub tool in `agents/devops-rca-agent.yaml`:
-```yaml
-- name: github_tool
-  type: python
-  module: tools.github_api
-  function: github_tool
-```
-
-**4. Restart agent:**
-```bash
-kubectl rollout restart deployment/devops-rca-agent -n analysis-agent
-```
+Then re-run `./scripts/setup-local-secrets.sh` to update secrets.
 
 ### Agent Memory
 
@@ -267,6 +261,10 @@ Primary: Database connection string missing DB_PASSWORD environment variable
 - [Roadmap](docs/ROADMAP.md) - Future enhancements and features
 - [Development Plan](development/development_plan.md) - Detailed 6-phase implementation roadmap
 - [CLAUDE.md](CLAUDE.md) - Architecture details and development guide
+
+**Security Documentation:**
+- [Local Secrets Guide](docs/security/local-secrets.md) - Development/testing secret management with automated setup
+- [Vault Production Guide](docs/security/vault-guide.md) - Production-grade secret management with HashiCorp Vault
 
 **Service Documentation:**
 - [Webhook Service](services/webhook/README.md) - AlertManager webhook receiver
