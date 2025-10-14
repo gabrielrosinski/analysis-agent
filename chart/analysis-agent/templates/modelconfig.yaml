@@ -1,0 +1,15 @@
+{{- if .Values.agent.enabled -}}
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: {{ .Values.kagent.modelConfig }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "analysis-agent.labels" . | nindent 4 }}
+spec:
+  provider: Anthropic
+  model: claude-sonnet-4-5-20250929
+  apiKeySecret: kagent-anthropic
+  apiKeySecretKey: ANTHROPIC_API_KEY
+  anthropic: {}
+{{- end }}

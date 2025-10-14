@@ -67,13 +67,19 @@ kubectl create namespace analysis-agent --dry-run=client -o yaml | kubectl apply
 echo -e "${GREEN}✓${NC} Namespaces created"
 echo ""
 
-# Create Anthropic API key secret
+# Create Anthropic API key secret (in both namespaces)
 echo "Creating Anthropic API key secret..."
 kubectl create secret generic kagent-anthropic \
     -n kagent \
     --from-literal=ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
     --dry-run=client -o yaml | kubectl apply -f -
 echo -e "${GREEN}✓${NC} Anthropic secret created in kagent namespace"
+
+kubectl create secret generic kagent-anthropic \
+    -n analysis-agent \
+    --from-literal=ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
+    --dry-run=client -o yaml | kubectl apply -f -
+echo -e "${GREEN}✓${NC} Anthropic secret created in analysis-agent namespace"
 
 # Create Gmail credentials secret
 echo "Creating Gmail credentials secret..."

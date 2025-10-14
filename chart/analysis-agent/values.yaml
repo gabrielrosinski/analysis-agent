@@ -38,7 +38,7 @@ webhook:
       memory: 128Mi
   env:
     - name: LOG_LEVEL
-      value: "info"
+      value: "INFO"
     - name: AGENT_NAME
       value: "devops-rca-agent"
     - name: AGENT_NAMESPACE
@@ -104,26 +104,6 @@ agent:
     7. Create comprehensive markdown report
     8. Update memory with learnings
     9. Send notification via notifier service
-
-  # Custom tools (Python modules)
-  tools:
-    - name: memory_tool
-      type: python
-      module: tools.memory_manager
-      function: memory_tool
-    - name: helm_tool
-      type: python
-      module: tools.helm_analyzer
-      function: helm_tool
-    - name: log_tool
-      type: python
-      module: tools.log_analyzer
-      function: log_tool
-    # GitHub tool (optional - uncomment if GitHub integration is configured)
-    # - name: github_tool
-    #   type: python
-    #   module: tools.github_api
-    #   function: github_tool
 
 ## RBAC Configuration
 rbac:

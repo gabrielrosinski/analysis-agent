@@ -7,27 +7,24 @@ metadata:
   labels:
     {{- include "analysis-agent.agent.labels" . | nindent 4 }}
 spec:
-  # Reference to ModelConfig in Kagent namespace
-  modelConfig: {{ .Values.kagent.modelConfig }}
-
-  # System instructions for the agent
-  instructions: |
-{{ .Values.agent.instructions | nindent 4 }}
-
-  # Custom Python tools
-  tools:
-{{- toYaml .Values.agent.tools | nindent 4 }}
-
-  # Service account for Kubernetes API access
-  serviceAccount: {{ include "analysis-agent.agent.serviceAccountName" . }}
-
-  # Agent memory volume mount
-  volumes:
-    - name: agent-memory
-      persistentVolumeClaim:
-        claimName: {{ .Values.storage.pvc.name }}
-
-  volumeMounts:
-    - name: agent-memory
-      mountPath: /agent-memory
+  declarative:
+    modelConfig: {{ .Values.kagent.modelConfig }}
+    systemMessage: |
+{{ .Values.agent.instructions | nindent 6 }}
+    deployment:
+      replicas: 1
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 1000m
+          memory: 1Gi
+      volumes:
+        - name: agent-memory
+          persistentVolumeClaim:
+            claimName: {{ .Values.storage.pvc.name }}
+      volumeMounts:
+        - name: agent-memory
+          mountPath: /agent-memory
 {{- end }}
